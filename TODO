@@ -1,0 +1,29 @@
+emergency.target wants vconsole-setup.service like in dracut?
+
+shadow-utils dep in systemd.rpm
+
+Also:
+[    2.236219] systemd-sysusers[221]: Creating group sgx with gid 994.
+[    2.236598] systemd-sysusers[221]: Creating group systemd-network with gid 993.
+[    2.236641] systemd-sysusers[221]: Creating user systemd-network (systemd Network Management) with uid 993 and gid 993.
+[    2.237813] systemd[1]: Finished Create System Users.
+Looks like we forgot to create users in scriptlets.
+
+Is dbus needed? Note dbus dep in systemd.rpm.
+
+Why is ldconfig.service started in the initramfs?
+ConditionNeedsUpdate=|/etc
+ConditionFileNotEmpty=|!/etc/ld.so.cache
+Mtimes in the archive are set properly. Kernel code seems to be preserving utimes (init/initramfs.c → vfs_utimes)
+
+Failures w/o dbus:
+systemd-logind
+systemd-homed
+
+Note: ???
+
+selinux: convert to dlopen? Is selinux in the initramfs useful?
+
+shutdown?
+
+DNF install mount /proc

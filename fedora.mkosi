@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: LGPL-2.1-or-later
+
+[Distribution]
+# Distribution=fedora
+# Release=34
+
+[Output]
+Format=cpio
+Compress=zstd
+
+[Packages]
+BasePackages=conditional
+Packages=
+        systemd                   # sine qua non
+        systemd-udev
+
+        # File system checkers for supported root file systems
+        /usr/sbin/fsck.ext4
+        /usr/sbin/fsck.xfs
+        # fsck.btrfs is a dummy, checking is done in the kernel.
+
+        bash                      # for emergency logins
+
+        less                      # this makes 'systemctl' much nicer to use ;)
+
+        # Hardware support
+        lvm2

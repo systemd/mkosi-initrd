@@ -1,0 +1,142 @@
+#!/usr/bin/env python
+
+import ast
+import functools
+import os
+import pathlib
+import re
+import subprocess
+import sys
+
+def dictify(f):
+    def wrapper(*args, **kwargs):
+        return dict(f(*args, **kwargs))
+    return functools.update_wrapper(wrapper, f)
+
+def unlink(path):
+    try:
+        os.unlink(path)
+    except FileNotFoundError:
+        pass
+
+def buildroot():
+    buildroot = os.getenv('BUILDROOT')
+    buildroot = pathlib.Path(buildroot)
+    return buildroot
+
+def copy_in_modules(root, kver):
+    file_filter = ['--nonmatching',
+                   './lib/modules/*/bls.conf',      # a grub abomination with $grub_variables
+                   './lib/modules/*/vmlinuz']
+
+    path = pathlib.Path(sys.argv[0]).parent
+    files = [path / f'kernel-core-{kver}.rpm']
+
+    print(f'Setting up for kernel {kver}')
+
+    for file in files:
+        with subprocess.Popen(['rpm2cpio', file], stdout=subprocess.PIPE) as archive:
+            subprocess.run(['cpio', '-i', '--make-directories', '--quiet', '-D', root, *file_filter],
+                           stdin=archive.stdout,
+                           check=True)
+
+    subprocess.run(['depmod', '-a', '-w', '-b', root, kver], check=True)
+
+@dictify
+def read_os_release(root):
+    try:
+        f = open(root / 'etc/os-release')
+    except FileNotFoundError:
+        f = open(root / 'usr/lib/os-release')
+
+    for line_number, line in enumerate(f, start=1):
+        if not line.strip() or line.startswith('#'):
+            continue
+        if m := re.match(r'([A-Z][A-Z_0-9]+)=(.*)', line):
+            name, val = m.groups()
+            if val and val[0] in '"\'':
+                val = ast.literal_eval(val)
+            yield name, val
+        else:
+            print(f'Bad line {line_number}: {line}', file=sys.stderr)
+
+def update_suffixed(items, name, fallback):
+    value = items.get(name, fallback)
+    if 'mkosi-initrd' in value:
+        return
+    items[name] = value + ' (mkosi-initrd)'
+
+def make_initrd_release(root, out):
+    os_release = read_os_release(root)
+
+    # Replacing fields in the original dictionary should maintain the order
+    update_suffixed(os_release, 'NAME', 'Linux')
+    update_suffixed(os_release, 'PRETTY_NAME', 'Linux')
+    os_release['VARIANT'] = 'mkosi-initrd'
+    os_release['VARIANT_ID'] = 'mkosi-initrd'
+
+    for name, value in os_release.items():
+        if value:
+            print(f'{name}={value!r}', file=out)
+
+    print(f'Writing initrd-release with PRETTY_NAME={os_release["PRETTY_NAME"]!r}')
+
+def write_initrd_release(root):
+    output = root / 'etc/initrd-release'
+
+    unlink(output)
+
+    with open(output, 'wt') as out:
+        make_initrd_release(root, out)
+
+    unlink(root / 'etc/os-release')
+    unlink(root / 'usr/lib/os-release')
+
+    os.symlink('initrd-release', root / 'etc/os-release')
+
+def make_init_symlink(root):
+    init = root / 'init'
+    unlink(init)
+    os.symlink('usr/lib/systemd/systemd', init)
+    print(f'Symlinked {init} → usr/lib/systemd/systemd')
+
+def make_sysroot_dir(root):
+    sysroot = root / 'sysroot'
+    os.makedirs(sysroot, mode=0o755, exist_ok=True)
+    print(f'Created {sysroot}')
+
+def make_debug_shell_emergency(root):
+    unit = root / 'etc/systemd/system/emergency.service'
+    unlink(unit)
+    os.symlink('debug-shell.service', unit)
+    print(f'Symlinked {unit} → debug-shell.service')
+
+def mask_units(root):
+    units = [# https://github.com/karelzak/util-linux/pull/1313
+             'fstrim.timer',
+
+             # https://github.com/systemd/systemd/pull/19687
+             'systemd-journal-flush.service',
+             'systemd-tmpfiles-clean.timer',
+             'systemd-random-seed.service']
+
+    subprocess.run(['systemctl', f'--root={root}', 'mask', *units], check=True)
+
+if __name__ == '__main__':
+    if sys.argv[1] != 'final':
+        exit(0)
+
+    root = buildroot()
+
+    # kver = os.uname().release
+    kver = '5.12.5-300.fc34.x86_64'
+    copy_in_modules(root, kver)
+
+    write_initrd_release(root)
+
+    make_init_symlink(root)
+    make_sysroot_dir(root)
+
+    mask_units(root)
+
+    make_debug_shell_emergency(root)
