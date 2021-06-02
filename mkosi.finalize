@@ -118,7 +118,25 @@ def mask_units(root):
              # https://github.com/systemd/systemd/pull/19687
              'systemd-journal-flush.service',
              'systemd-tmpfiles-clean.timer',
-             'systemd-random-seed.service']
+             'systemd-random-seed.service',
+
+             # systemd[1]: proc-sys-fs-binfmt_misc.automount: Got hangup/error on autofs pipe from kernel. Likely our automount point has been unmounted by someone or something else?
+             # systemd[1]: proc-sys-fs-binfmt_misc.automount: Failed with result 'unmounted'.
+             # systemd[1]: Mounting proc-sys-fs-binfmt_misc.mount...
+             # systemd[1]: Mounted proc-sys-fs-binfmt_misc.mount.
+             # systemd[1]: Starting systemd-binfmt.service...
+             # systemd[1]: Finished systemd-binfmt.service.
+             # systemd[1]: proc-sys-fs-binfmt_misc.automount: Path /proc/sys/fs/binfmt_misc is already a mount point, refusing start.
+             # systemd[1]: Failed to set up automount proc-sys-fs-binfmt_misc.automount.
+             # systemd[1]: proc-sys-fs-binfmt_misc.automount: Path /proc/sys/fs/binfmt_misc is already a mount point, refusing start.
+             # systemd[1]: Failed to set up automount proc-sys-fs-binfmt_misc.automount.
+             # systemd[1]: proc-sys-fs-binfmt_misc.automount: Path /proc/sys/fs/binfmt_misc is already a mount point, refusing start.
+             # systemd[1]: Failed to set up automount proc-sys-fs-binfmt_misc.automount.
+             # systemd[1]: Stopping systemd-binfmt.service...
+             # systemd[1]: systemd-binfmt.service: Deactivated successfully.
+             # systemd[1]: Stopped systemd-binfmt.service.
+             'proc-sys-fs-binfmt_misc.automount',
+             'proc-sys-fs-binfmt_misc.mount']
 
     subprocess.run(['systemctl', f'--root={root}', 'mask', *units], check=True)
 
