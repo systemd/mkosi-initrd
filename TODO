@@ -27,3 +27,7 @@ selinux: convert to dlopen? Is selinux in the initramfs useful?
 shutdown?
 
 DNF install mount /proc
+
+Does emergency target stop sysroot.mount? It shouldn't. If we isolate
+on error, that would happen. But it seems we don't, just start the
+emergency target.
