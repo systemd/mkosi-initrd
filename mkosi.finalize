@@ -112,33 +112,48 @@ def make_debug_shell_emergency(root):
     print(f'Symlinked {unit} → debug-shell.service')
 
 def mask_units(root):
-    units = [# https://github.com/karelzak/util-linux/pull/1313
-             'fstrim.timer',
+    units = [
+        # https://github.com/karelzak/util-linux/pull/1313
+        'fstrim.timer',
 
-             # https://github.com/systemd/systemd/pull/19687
-             'systemd-journal-flush.service',
-             'systemd-tmpfiles-clean.timer',
-             'systemd-random-seed.service',
+        # https://github.com/systemd/systemd/pull/19687
+        'systemd-journal-flush.service',
+        'systemd-tmpfiles-clean.timer',
+        'systemd-random-seed.service',
 
-             # Dracut installs a rule which sets OPTIONS+="db_persist" on all dm devices [1]
-             # (According to codesearch.debian.net, it is the only user of db_persist.)
-             # Without this, all dm units end up with SYSTEMD_READY=0 and systemd things the
-             # device units are missing. The system boots fine, but an attempt to call
-             # daemon-reexec or daemon-reload ends with anything that can be stopped or unmounted
-             # being purged.
-             #
-             # In systemd, we always have cleaned the database on switch-root, since the initial
-             # addition of the initrd-* units in cf843477946451fabf9b5d17eec8ec81515057b6. But
-             # that seems pointless, since initrds need to match the kernel version and are
-             # generally used with the main system in the main version or slightly newer. And
-             # for important devices, db_persist is set. So we end up destroying some of the
-             # state, but not all. Let's just skip the cleanup altogether, and rely on the rules
-             # being idempotent to that we end up in the correct state.
-             #
-             # [1] https://raw.githubusercontent.com/dracutdevs/dracut/2d83bce21bfc874b29c1fb99e8fabb843f038725/modules.d/90dm/11-dm.rules
-             'initrd-udevadm-cleanup-db.service']
+        # Dracut installs a rule which sets OPTIONS+="db_persist" on all dm devices [1]
+        # (According to codesearch.debian.net, it is the only user of db_persist.)
+        # Without this, all dm units end up with SYSTEMD_READY=0 and systemd thinks the
+        # device units are missing. The system boots fine, but an attempt to call
+        # daemon-reexec or daemon-reload ends with anything that can be stopped or unmounted
+        # being purged.
+        #
+        # In systemd, we always have cleaned the database on switch-root, since the initial
+        # addition of the initrd-* units in cf843477946451fabf9b5d17eec8ec81515057b6. But
+        # that seems pointless, since initrds need to match the kernel version and are
+        # generally used with the main system in the main version or slightly newer. And
+        # for important devices, db_persist is set. So we end up destroying some of the
+        # state, but not all. Let's just skip the cleanup altogether, and rely on the rules
+        # being idempotent to that we end up in the correct state.
+        #
+        # [1] https://raw.githubusercontent.com/dracutdevs/dracut/2d83bce21bfc874b29c1fb99e8fabb843f038725/modules.d/90dm/11-dm.rules
+        'initrd-udevadm-cleanup-db.service',
+
+        # We would always trigger all services with ConditionNeedsUpdate
+        # because /{etc,var}/.updated do not exist. We expect that
+        # everything is updated and ready to use after we have installed
+        # our package set, see https://github.com/systemd/systemd/pull/19836.
+        #
+        # https://github.com/systemd/systemd/pull/19837
+        'ldconfig.service',
+        'systemd-hwdb-update.service',
+        'systemd-journal-catalog-update.service',
+        'systemd-sysusers.service',
+        'systemd-update-done.service',
+    ]
 
     subprocess.run(['systemctl', f'--root={root}', 'mask', *units], check=True)
+
 
 if __name__ == '__main__':
     if sys.argv[1] != 'final':
@@ -155,6 +170,6 @@ if __name__ == '__main__':
     make_init_symlink(root)
     make_sysroot_dir(root)
 
-    mask_units(root)
-
     make_debug_shell_emergency(root)
+
+    mask_units(root)

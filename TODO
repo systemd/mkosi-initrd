@@ -11,11 +11,6 @@ Looks like we forgot to create users in scriptlets.
 
 Is dbus needed? Note dbus dep in systemd.rpm.
 
-Why is ldconfig.service started in the initramfs?
-ConditionNeedsUpdate=|/etc
-ConditionFileNotEmpty=|!/etc/ld.so.cache
-Mtimes in the archive are set properly. Kernel code seems to be preserving utimes (init/initramfs.c → vfs_utimes)
-
 Failures w/o dbus:
 systemd-logind
 systemd-homed
