@@ -10,3 +10,8 @@ mkdir mkosi.cache
 dnf download kernel-core-5.12.5-300.fc34.x86_64
 sudo PYTHONPATH=$HOME/src/mkosi python3 -m mkosi -f -o initrd.cpio.zstd
 ```
+
+Requirements:
+- mkosi >= 10
+- systemd >= 249
+- util-linux >= 2.37

@@ -113,14 +113,6 @@ def make_debug_shell_emergency(root):
 
 def mask_units(root):
     units = [
-        # https://github.com/karelzak/util-linux/pull/1313
-        'fstrim.timer',
-
-        # https://github.com/systemd/systemd/pull/19687
-        'systemd-journal-flush.service',
-        'systemd-tmpfiles-clean.timer',
-        'systemd-random-seed.service',
-
         # Dracut installs a rule which sets OPTIONS+="db_persist" on all dm devices [1]
         # (According to codesearch.debian.net, it is the only user of db_persist.)
         # Without this, all dm units end up with SYSTEMD_READY=0 and systemd thinks the
@@ -138,18 +130,6 @@ def mask_units(root):
         #
         # [1] https://raw.githubusercontent.com/dracutdevs/dracut/2d83bce21bfc874b29c1fb99e8fabb843f038725/modules.d/90dm/11-dm.rules
         'initrd-udevadm-cleanup-db.service',
-
-        # We would always trigger all services with ConditionNeedsUpdate
-        # because /{etc,var}/.updated do not exist. We expect that
-        # everything is updated and ready to use after we have installed
-        # our package set, see https://github.com/systemd/systemd/pull/19836.
-        #
-        # https://github.com/systemd/systemd/pull/19837
-        'ldconfig.service',
-        'systemd-hwdb-update.service',
-        'systemd-journal-catalog-update.service',
-        'systemd-sysusers.service',
-        'systemd-update-done.service',
     ]
 
     subprocess.run(['systemctl', f'--root={root}', 'mask', *units], check=True)
