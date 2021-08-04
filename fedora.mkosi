@@ -25,3 +25,9 @@ Packages=
 
         # Hardware support
         lvm2
+
+RemoveFiles=
+        # we don't need this after the binary catalogs have been built
+        /usr/lib/systemd/catalog
+        /etc/udev/hwdb.d
+        /usr/lib/udev/hwdb.d
