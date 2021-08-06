@@ -126,7 +126,7 @@ def mask_units(root):
         # generally used with the main system in the main version or slightly newer. And
         # for important devices, db_persist is set. So we end up destroying some of the
         # state, but not all. Let's just skip the cleanup altogether, and rely on the rules
-        # being idempotent to that we end up in the correct state.
+        # being idempotent so that we end up in the correct state.
         #
         # [1] https://raw.githubusercontent.com/dracutdevs/dracut/2d83bce21bfc874b29c1fb99e8fabb843f038725/modules.d/90dm/11-dm.rules
         'initrd-udevadm-cleanup-db.service',
@@ -140,6 +140,17 @@ if __name__ == '__main__':
         exit(0)
 
     root = buildroot()
+
+    # This part is pretty ugly. The kernel package provides the following subpackages:
+    # kernel — empty metapackage
+    # kernel-core — /boot/vmlinuz-<kver> (%ghost?) and /lib/modules/<kver>/vmlinuz,
+    #          and a bunch of basic modules.
+    # kernel-modules — more modules (drivers)
+    # kernel-modules-extra — more modules ("less commonly used drivers")
+    # kernel-modules-internal — "kernel modules for the kernel package for Red Hat internal usage"
+    #          (netdevsim, rcutorture…)
+    #
+    # This script requires that kernel-core-<kver>.rpm is present in $CWD.
 
     # kver = os.uname().release
     kver = '5.12.5-300.fc34.x86_64'
