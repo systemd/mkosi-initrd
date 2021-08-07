@@ -152,8 +152,12 @@ if __name__ == '__main__':
     #
     # This script requires that kernel-core-<kver>.rpm is present in $CWD.
 
-    # kver = os.uname().release
-    kver = '5.12.5-300.fc34.x86_64'
+    try:
+        kver = os.environ['KERNEL_VERSION']
+    except KeyError:
+        kver = os.uname().release
+        print(f'$KERNEL_VERSION not defined, falling back to {kver}')
+
     copy_in_modules(root, kver)
 
     write_initrd_release(root)
