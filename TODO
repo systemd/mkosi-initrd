@@ -2,13 +2,6 @@ emergency.target wants vconsole-setup.service like in dracut?
 
 shadow-utils dep in systemd.rpm
 
-Also:
-[    2.236219] systemd-sysusers[221]: Creating group sgx with gid 994.
-[    2.236598] systemd-sysusers[221]: Creating group systemd-network with gid 993.
-[    2.236641] systemd-sysusers[221]: Creating user systemd-network (systemd Network Management) with uid 993 and gid 993.
-[    2.237813] systemd[1]: Finished Create System Users.
-Looks like we forgot to create users in scriptlets.
-
 Is dbus needed? Note dbus dep in systemd.rpm.
 
 Failures w/o dbus:
