@@ -13,18 +13,12 @@ def dictify(f):
         return dict(f(*args, **kwargs))
     return functools.update_wrapper(wrapper, f)
 
-def unlink(path):
-    try:
-        os.unlink(path)
-    except FileNotFoundError:
-        pass
-
 def buildroot():
     buildroot = os.getenv('BUILDROOT')
     buildroot = pathlib.Path(buildroot)
     return buildroot
 
-def copy_in_modules(root, kver):
+def copy_in_modules_kver(root, kver):
     file_filter = ['--nonmatching',
                    './lib/modules/*/bls.conf',      # a grub abomination with $grub_variables
                    './lib/modules/*/vmlinuz']
@@ -42,12 +36,32 @@ def copy_in_modules(root, kver):
 
     subprocess.run(['depmod', '-a', '-w', '-b', root, kver], check=True)
 
+def copy_in_modules(root):
+    # This part is pretty ugly. The kernel package provides the following subpackages:
+    # kernel — empty metapackage
+    # kernel-core — /boot/vmlinuz-<kver> (%ghost?) and /lib/modules/<kver>/vmlinuz,
+    #          and a bunch of basic modules.
+    # kernel-modules — more modules (drivers)
+    # kernel-modules-extra — more modules ("less commonly used drivers")
+    # kernel-modules-internal — "kernel modules for the kernel package for Red Hat internal usage"
+    #          (netdevsim, rcutorture…)
+    #
+    # This script requires that kernel-core-<kver>.rpm is present in $CWD.
+
+    try:
+        kver = os.environ['KERNEL_VERSION']
+    except KeyError:
+        kver = os.uname().release
+        print(f'$KERNEL_VERSION not defined, using {kver}')
+
+    copy_in_modules_kver(root, kver)
+
 @dictify
 def read_os_release(root):
     try:
-        f = open(root / 'etc/os-release')
+        f = root.joinpath('etc/os-release').open()
     except FileNotFoundError:
-        f = open(root / 'usr/lib/os-release')
+        f = root.joinpath('usr/lib/os-release').open()
 
     for line_number, line in enumerate(f, start=1):
         if not line.strip() or line.startswith('#'):
@@ -83,32 +97,32 @@ def make_initrd_release(root, out):
 
 def write_initrd_release(root):
     output = root / 'etc/initrd-release'
+    output.unlink(missing_ok=True)
 
-    unlink(output)
-
-    with open(output, 'wt') as out:
+    with output.open('wt') as out:
         make_initrd_release(root, out)
 
-    unlink(root / 'etc/os-release')
-    unlink(root / 'usr/lib/os-release')
+    root.joinpath('etc/os-release').unlink(missing_ok=True)
+    root.joinpath('usr/lib/os-release').unlink(missing_ok=True)
 
-    os.symlink('initrd-release', root / 'etc/os-release')
+    root.joinpath('etc/os-release').symlink_to(output.name)
+
 
 def make_init_symlink(root):
     init = root / 'init'
-    unlink(init)
-    os.symlink('usr/lib/systemd/systemd', init)
+    init.unlink(missing_ok=True)
+    init.symlink_to('usr/lib/systemd/systemd')
     print(f'Symlinked {init} → usr/lib/systemd/systemd')
 
 def make_sysroot_dir(root):
     sysroot = root / 'sysroot'
-    os.makedirs(sysroot, mode=0o755, exist_ok=True)
+    sysroot.mkdir(mode=0o755, exist_ok=True)
     print(f'Created {sysroot}')
 
 def make_debug_shell_emergency(root):
     unit = root / 'etc/systemd/system/emergency.service'
-    unlink(unit)
-    os.symlink('debug-shell.service', unit)
+    unit.unlink(missing_ok=True)
+    unit.symlink_to('debug-shell.service')
     print(f'Symlinked {unit} → debug-shell.service')
 
 def mask_units(root):
@@ -135,30 +149,8 @@ def mask_units(root):
     subprocess.run(['systemctl', f'--root={root}', 'mask', *units], check=True)
 
 
-if __name__ == '__main__':
-    if sys.argv[1] != 'final':
-        exit(0)
-
-    root = buildroot()
-
-    # This part is pretty ugly. The kernel package provides the following subpackages:
-    # kernel — empty metapackage
-    # kernel-core — /boot/vmlinuz-<kver> (%ghost?) and /lib/modules/<kver>/vmlinuz,
-    #          and a bunch of basic modules.
-    # kernel-modules — more modules (drivers)
-    # kernel-modules-extra — more modules ("less commonly used drivers")
-    # kernel-modules-internal — "kernel modules for the kernel package for Red Hat internal usage"
-    #          (netdevsim, rcutorture…)
-    #
-    # This script requires that kernel-core-<kver>.rpm is present in $CWD.
-
-    try:
-        kver = os.environ['KERNEL_VERSION']
-    except KeyError:
-        kver = os.uname().release
-        print(f'$KERNEL_VERSION not defined, falling back to {kver}')
-
-    copy_in_modules(root, kver)
+def do_initrd(root):
+    copy_in_modules(root)
 
     write_initrd_release(root)
 
@@ -168,3 +160,11 @@ if __name__ == '__main__':
     make_debug_shell_emergency(root)
 
     mask_units(root)
+
+if __name__ == '__main__':
+    if sys.argv[1] != 'final':
+        exit(0)
+
+    root = buildroot()
+
+    do_initrd(root)
