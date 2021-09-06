@@ -5,6 +5,7 @@ import functools
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 
@@ -93,7 +94,30 @@ def make_initrd_release(root, out):
         if value:
             print(f'{name}={value!r}', file=out)
 
-    print(f'Writing initrd-release with PRETTY_NAME={os_release["PRETTY_NAME"]!r}')
+    print(f'Writing {out.name} with PRETTY_NAME={os_release["PRETTY_NAME"]!r}')
+
+def make_sysext_release(root, sysext_name, out):
+    os_release = read_os_release(root)
+
+    sysext = {'NAME': sysext_name}
+    for field in ('ID',
+                  'VERSION_ID',
+                  'VERSION_CODENAME',
+                  'PLATFORM_ID',
+                  'SYSEXT_LEVEL',
+
+                  'HOME_URL',
+                  'DOCUMENTATION_URL',
+                  'SUPPORT_URL',
+                  'BUG_REPORT_URL',
+                  'PRIVACY_POLICY_URL'):
+        if value := os_release.get(field):
+            sysext[field] = value
+
+    for name, value in sysext.items():
+        print(f'{name}={value!r}', file=out)
+
+    print(f'Writing {out.name} with NAME={sysext["NAME"]!r}')
 
 def write_initrd_release(root):
     output = root / 'etc/initrd-release'
@@ -107,6 +131,12 @@ def write_initrd_release(root):
 
     root.joinpath('etc/os-release').symlink_to(output.name)
 
+def write_sysext_release(root, sysext_name):
+    output = root / f"usr/lib/extension-release.d/extension-release.{sysext_name}"
+    output.parent.mkdir(exist_ok=True)
+
+    with output.open('wt') as out:
+        make_sysext_release(root, sysext_name, out)
 
 def make_init_symlink(root):
     init = root / 'init'
@@ -148,6 +178,20 @@ def mask_units(root):
 
     subprocess.run(['systemctl', f'--root={root}', 'mask', *units], check=True)
 
+def remove_non_sysext_files(root):
+    var = root / "var"
+    if var.exists():
+        shutil.rmtree(var)
+
+    etc = root / "etc"
+    if etc.exists():
+        # from mkosi import find_files
+        # for path in find_files(etc):
+        #     print(f'WARNING: configuration file: {path}')
+        # … This doesn't work because we also see files from the lower layer
+
+        shutil.rmtree(etc)
+
 
 def do_initrd(root):
     copy_in_modules(root)
@@ -161,10 +205,18 @@ def do_initrd(root):
 
     mask_units(root)
 
+def do_sysext(root, sysext_name):
+    write_sysext_release(root, sysext_name)
+    remove_non_sysext_files(root)
+
 if __name__ == '__main__':
     if sys.argv[1] != 'final':
         exit(0)
 
     root = buildroot()
 
-    do_initrd(root)
+    sysext = os.getenv('SYSEXT')
+    if sysext:
+        do_sysext(root, sysext)
+    else:
+        do_initrd(root)
