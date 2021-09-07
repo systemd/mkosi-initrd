@@ -8,7 +8,7 @@
 Format=cpio
 Compress=zstd
 
-[Packages]
+[Content]
 BasePackages=conditional
 Packages=
         systemd                   # sine qua non
