@@ -178,20 +178,6 @@ def mask_units(root):
 
     subprocess.run(['systemctl', f'--root={root}', 'mask', *units], check=True)
 
-def remove_packages(root):
-    # FIXME: this needs to be conditionalized on dnf metadata removal
-
-    packages = [
-        # setup and lvm2 pull in system-release (provided by fedora-release)
-        # during installation. Various packages pull shadow-utils to create users.
-        # We can uninstall all of those afterwards.
-        'setup',
-        'fedora-release',
-        'shadow-utils',
-    ]
-
-    subprocess.run(['dnf', f'--installroot={root}', '-y', 'remove', *packages], check=False)
-
 def remove_non_sysext_files(root):
     var = root / "var"
     if var.exists():
@@ -218,8 +204,6 @@ def do_initrd(root):
     make_debug_shell_emergency(root)
 
     mask_units(root)
-
-    remove_packages(root)
 
 def do_sysext(root, sysext_name):
     write_sysext_release(root, sysext_name)

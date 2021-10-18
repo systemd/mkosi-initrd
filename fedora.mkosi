@@ -29,6 +29,14 @@ Packages=
         # Hardware support
         lvm2
 
+RemovePackages=
+        # Various packages pull shadow-utils to create users
+        shadow-utils
+
+        # Dropping those will require getting rid of deps in systemd and possibly other packages
+        # setup
+        # fedora-release
+
 RemoveFiles=
         # we don't need this after the binary catalogs have been built
         /usr/lib/systemd/catalog
