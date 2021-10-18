@@ -16,7 +16,10 @@ Packages=
 
         # File system checkers for supported root file systems
         /usr/sbin/fsck.ext4
+
+        # This pulls in util-linux in F<=34. Fixed in https://bugzilla.redhat.com/show_bug.cgi?id=2002814.
         /usr/sbin/fsck.xfs
+
         # fsck.btrfs is a dummy, checking is done in the kernel.
 
         bash                      # for emergency logins
