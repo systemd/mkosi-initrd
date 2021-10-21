@@ -25,15 +25,21 @@ def copy_in_modules_kver(root, kver):
                    './lib/modules/*/vmlinuz']
 
     path = pathlib.Path(sys.argv[0]).parent
-    files = [path / f'kernel-core-{kver}.rpm']
+    file = path / f'kernel-core-{kver}.rpm'
 
     print(f'Setting up for kernel {kver}')
 
-    for file in files:
-        with subprocess.Popen(['rpm2cpio', file], stdout=subprocess.PIPE) as archive:
-            subprocess.run(['cpio', '-i', '--make-directories', '--quiet', '-D', root, *file_filter],
-                           stdin=archive.stdout,
-                           check=True)
+    if not file.exists():
+        print(f'{file} not found, downloading.')
+
+        subprocess.run(['dnf', 'download', f'--downloaddir={file.parent}',
+                        file.with_suffix('').name],
+                       check=True)
+
+    with subprocess.Popen(['rpm2cpio', file], stdout=subprocess.PIPE) as archive:
+        subprocess.run(['cpio', '-i', '--make-directories', '--quiet', '-D', root, *file_filter],
+                       stdin=archive.stdout,
+                       check=True)
 
     subprocess.run(['depmod', '-a', '-w', '-b', root, kver], check=True)
 
