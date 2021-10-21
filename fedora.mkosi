@@ -5,6 +5,7 @@
 # Release=34
 
 [Output]
+ImageId=initrd
 Format=cpio
 Compress=zstd
 

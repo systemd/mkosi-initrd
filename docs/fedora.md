@@ -28,7 +28,7 @@ We pass `KERNEL_VERSION=…` to tell the scripts what version to install.
 ```bash
 KVER=`uname -r`
 dnf download kernel-core-$KVER
-sudo PYTHONPATH=$PWD/../mkosi python -m mkosi --default fedora.mkosi -f -o initrd-$KVER.cpio.zst --environment=KERNEL_VERSION=$KVER
+sudo PYTHONPATH=$PWD/../mkosi python -m mkosi --default fedora.mkosi -f --image-version=$KVER --environment=KERNEL_VERSION=$KVER
 ```
 
 This should produce an image that is about 60 MB:
@@ -110,15 +110,15 @@ Created symlink /var/tmp/mkosi-k3j2xmzy/root/etc/systemd/system/initrd-udevadm-c
 ‣  Unmounting image
 ‣  Creating archive…
 ‣ Linking image file…
-‣  Changing ownership of output file mkosi.output/initrd-5.14.9-300.fc35.x86_64.cpio.zst to user … (acquired from sudo)…
-‣  Changed ownership of mkosi.output/initrd-5.14.9-300.fc35.x86_64.cpio.zst
-‣ Linked mkosi.output/initrd-5.14.9-300.fc35.x86_64.cpio.zst
-‣ Saving manifest mkosi.output/initrd-5.14.9-300.fc35.x86_64.cpio.zst.manifest
-‣  Changing ownership of output file mkosi.output/initrd-5.14.9-300.fc35.x86_64.cpio.zst.manifest to user … (acquired from sudo)…
-‣  Changed ownership of mkosi.output/initrd-5.14.9-300.fc35.x86_64.cpio.zst.manifest
-‣ Saving report mkosi.output/initrd-5.14.9-300.fc35.x86_64.cpio.zst.changelog
-‣  Changing ownership of output file mkosi.output/initrd-5.14.9-300.fc35.x86_64.cpio.zst.changelog to user … (acquired from sudo)…
-‣  Changed ownership of mkosi.output/initrd-5.14.9-300.fc35.x86_64.cpio.zst.changelog
+‣  Changing ownership of output file mkosi.output/initrd_5.14.9-300.fc35.x86_64.cpio.zst to user … (acquired from sudo)…
+‣  Changed ownership of mkosi.output/initrd_5.14.9-300.fc35.x86_64.cpio.zst
+‣ Linked mkosi.output/initrd_5.14.9-300.fc35.x86_64.cpio.zst
+‣ Saving manifest mkosi.output/initrd_5.14.9-300.fc35.x86_64.cpio.zst.manifest
+‣  Changing ownership of output file mkosi.output/initrd_5.14.9-300.fc35.x86_64.cpio.zst.manifest to user … (acquired from sudo)…
+‣  Changed ownership of mkosi.output/initrd_5.14.9-300.fc35.x86_64.cpio.zst.manifest
+‣ Saving report mkosi.output/initrd_5.14.9-300.fc35.x86_64.cpio.zst.changelog
+‣  Changing ownership of output file mkosi.output/initrd_5.14.9-300.fc35.x86_64.cpio.zst.changelog to user … (acquired from sudo)…
+‣  Changed ownership of mkosi.output/initrd_5.14.9-300.fc35.x86_64.cpio.zst.changelog
 ‣ Resulting image size is 54.7M, consumes 54.7M.
 ```
 
@@ -128,7 +128,7 @@ Hint: on repeated runs, it may be useful to add `--with-network=never` if no new
 
 ## UEFI
 
-The output image `mkosi.output/initrd-$KVER.cpio.zst` needs to be installed as
+The output image `mkosi.output/initrd_$KVER.cpio.zst` needs to be installed as
 `/boot/efi/$(cat /etc/machine-id)/$KVER/initrd` .
 `bootctl list` can be used verify the status.
 
@@ -137,8 +137,8 @@ Currently there is no integration with `kernel-install` or other tools.
 ## Non-EFI
 
 ```
-cp mkosi.output/initrd-$KVER.cpio.zst /boot/
-grubby --copy-default --add-kernel=/boot/vmlinuz-$KVER --initrd=/boot/initrd-$KVER.cpio.zst --title="experimental-$KVER" --make-default
+cp mkosi.output/initrd_$KVER.cpio.zst /boot/
+grubby --copy-default --add-kernel=/boot/vmlinuz-$KVER --initrd=/boot/initrd_$KVER.cpio.zst --title="experimental-$KVER" --make-default
 ```
 
 # Building system extension images
@@ -146,14 +146,17 @@ grubby --copy-default --add-kernel=/boot/vmlinuz-$KVER --initrd=/boot/initrd-$KV
 First we need to create a version of the initrd image that includes the package metadata:
 
 ```bash
-sudo PYTHONPATH=$PWD/../mkosi python -m mkosi --default fedora.mkosi -f -o initrd-$KVER.d --environment=KERNEL_VERSION=$KVER \
+sudo PYTHONPATH=$PWD/../mkosi python -m mkosi --default fedora.mkosi -f \
+  --image-version=$KVER \
+  --environment=KERNEL_VERSION=$KVER \
   --format=directory --clean-package-metadata=no
 ```
 
 Once that's done, we can build a sysext:
 ```bash
-sudo PYTHONPATH=$PWD/../mkosi python -m mkosi --default fedora.mkosi -f -o initrd-$KVER-ssh.sysext \
-  --base-image=mkosi.output/initrd-$KVER.d \
+sudo PYTHONPATH=$PWD/../mkosi python -m mkosi --default fedora.mkosi -f \
+  --image-version=$KVER-ssh \
+  --base-image=mkosi.output/initrd_$KVER.d \
   --format=gpt_squashfs --environment=SYSEXT=initrd-$KVER-ssh \
   --package='!*,openssh-server'
 ```
@@ -161,9 +164,17 @@ sudo PYTHONPATH=$PWD/../mkosi python -m mkosi --default fedora.mkosi -f -o initr
 This should produce an image that is about 1 MB:
 
 ```console
-$ sudo PYTHONPATH=$PWD/../mkosi python -m mkosi --default fedora.mkosi -f -o initrd-$KVER-ssh.sysext \
-  --base-image=mkosi.output/initrd-$KVER.d \
-  --format=gpt_squashfs --environment=SYSEXT=initrd-$KVER-ssh \
+$ sudo PYTHONPATH=$PWD/../mkosi python -m mkosi --default fedora.mkosi -f \
+  --image-version=$KVER \
+  --environment=KERNEL_VERSION=$KVER \
+  --format=directory --clean-package-metadata=no
+...
+‣ Linked mkosi.output/initrd_5.14.9-300.fc35.x86_64
+‣ Resulting image size is 151.2M.
+
+$ sudo PYTHONPATH=$PWD/../mkosi python -m mkosi --default fedora.mkosi -f --image-version=$KVER-ssh \
+  --base-image=mkosi.output/initrd_$KVER \
+  --format=gpt_squashfs --environment=SYSEXT=initrd_$KVER-ssh \
   --package='!*,openssh-server'
 ...
 ‣   Installing Fedora Linux…
@@ -190,7 +201,7 @@ Installed size: 6.9 M
 ...
 ‣   Resetting machine ID
 ‣   Running finalize script…
-Writing /var/tmp/mkosi-g8wqud3n/root/usr/lib/extension-release.d/extension-release.initrd-5.14.9-300.fc35.x86_64-ssh with NAME='initrd-5.14.9-300.fc35.x86_64-ssh'
+Writing /var/tmp/mkosi-g8wqud3n/root/usr/lib/extension-release.d/extension-release.initrd_5.14.9-300.fc35.x86_64-ssh with NAME='initrd_5.14.9-300.fc35.x86_64-ssh'
 ‣   Cleaning up overlayfs
 ‣    Removing overlay whiteout files…
 ‣   Unmounting image
@@ -202,19 +213,19 @@ Creating 4.0 filesystem on /home/zbyszek/src/mkosi-initrd/mkosi.output/.mkosi-sq
 ‣    Resizing disk image to 808.0K
 ‣    Inserting partition of 768.0K...
 ...
-‣ Linked mkosi.output/initrd-5.14.9-300.fc35.x86_64-ssh.sysext
+‣ Linked mkosi.output/initrd_5.14.9-300.fc35.x86_64-ssh.raw
 ‣ Resulting image size is 808.0K, consumes 776.0K.
 ```
 
-FIXME: currently systemd refuses to load the sysext image because the file name doesn't match `extension-release.initrd-5.14.9-300.fc35.x86_64-ssh`, or something like that, it expects ".raw", and refuses to follow symlinks.
+Note: systemd will refuse to load the sysext image if the name is changed from and doesn't match the string `extension-release.initrd_5.14.9-300.fc35.x86_64-ssh` embedded in the image.
+It also doesn't follow symlinks.
 
 ```console
-$ mv mkosi.output/initrd-$KVER.{sysext,raw}
-sudo systemd-dissect mkosi.output/initrd-5.14.9-300.fc35.x86_64-ssh.raw
-      Name: initrd-5.14.9-300.fc35.x86_64-ssh.raw
+$ sudo systemd-dissect mkosi.output/initrd_5.14.9-300.fc35.x86_64-ssh.raw
+      Name: initrd_5.14.9-300.fc35.x86_64-ssh.raw
       Size: 808.0K
 
-Extension Release: NAME=initrd-5.14.9-300.fc35.x86_64-ssh
+Extension Release: NAME=initrd_5.14.9-300.fc35.x86_64-ssh
                    ID=fedora
                    VERSION_ID=35
                    PLATFORM_ID=platform:f35
