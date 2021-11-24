@@ -8,6 +8,7 @@ import re
 import shutil
 import subprocess
 import sys
+import xattr
 
 def dictify(f):
     def wrapper(*args, **kwargs):
@@ -146,6 +147,9 @@ def write_sysext_release(root, sysext_name):
 
     with output.open('wt') as out:
         make_sysext_release(root, sysext_name, out)
+
+    print('Setting user.extension-release.strict=0 on the extension-release file')
+    xattr.set(output, 'user.extension-release.strict', '0');
 
 def make_init_symlink(root):
     init = root / 'init'
