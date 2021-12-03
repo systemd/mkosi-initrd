@@ -132,8 +132,6 @@ The output image `mkosi.output/initrd_$KVER.cpio.zst` needs to be installed as
 `/boot/efi/$(cat /etc/machine-id)/$KVER/initrd` .
 `bootctl list` can be used verify the status.
 
-Currently there is no integration with `kernel-install` or other tools.
-
 ## Non-EFI
 
 ```
