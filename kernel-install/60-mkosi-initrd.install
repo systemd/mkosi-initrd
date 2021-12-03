@@ -1,0 +1,43 @@
+#!/usr/bin/bash
+export LANG=C
+
+COMMAND="$1"
+KERNEL_VERSION="$2"
+BOOT_DIR_ABS="$3"
+KERNEL_IMAGE="$4"
+
+INITRD="initrd"
+unset WITH_DRACUT
+
+if [ -x /usr/lib/kernel/install.d/50-dracut.install ] ; then
+    WITH_DRACUT="yes"
+    INITRD="initrd-mkosi"
+fi
+
+# if we have GRUB2 variation of BLS
+# we need to redefine some names
+if [ ! -d "$BOOT_DIR_ABS" ] ; then
+    BOOT_DIR_ABS="/boot"
+    if [ ! "$WITH_DRACUT" ] ; then
+        INITRD="initramfs-${KERNEL_VERSION}.img"
+    else
+        INITRD="initramfs-${KERNEL_VERSION}-mkosi.img"
+    fi
+fi
+
+case "$COMMAND" in
+    add)
+        BUILD_DIR=$(mktemp -d -p /var/tmp)
+        pushd "$BUILD_DIR" || exit 1
+        cp /usr/lib/mkosi-initrd/fedora.mkosi /usr/lib/mkosi-initrd/mkosi.finalize ./
+        mkosi --default fedora.mkosi --finalize-script=mkosi.finalize  -f --image-version="$KERNEL_VERSION" --environment=KERNEL_VERSION="$KERNEL_VERSION"
+        mv "mkosi.output/initrd_${KERNEL_VERSION}.cpio.zstd"  "$BOOT_DIR_ABS/$INITRD"
+        rm -rf "$BUILD_DIR"
+        popd || :
+        ;;
+
+    remove)
+        rm -f -- "$BOOT_DIR_ABS/$INITRD"
+        ;;
+esac
+exit 0
