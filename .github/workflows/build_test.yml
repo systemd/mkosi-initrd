@@ -1,0 +1,36 @@
+---
+# SPDX-License-Identifier: LGPL-2.1-or-later
+# vi: ts=2 sw=2 et:
+
+name: Build test
+on: [pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        distro: [ {name: fedora, tag: rawhide } ]
+    container:
+      image: "${{ matrix.distro.name }}:${{ matrix.distro.tag }}"
+      options: --privileged
+      # We need to have directories which mkosi uses for its overlayfs on a
+      # "real" filesystem (not an overlayfs), since we can't nest read/write
+      # layers. Also, it can't be tmpfs, since generating sysext images uses
+      # user xattrs. And to correctly propagate loop devices/partitions
+      # between the container and the host we need to explicitly mount host's
+      # /dev into the container.
+      volumes: ["/var/tmp:/var/tmp", "/dev:/dev"]
+    steps:
+      - name: Repository checkout
+        uses: actions/checkout@v2
+
+      - name: Install dependencies
+        run: ./.github/workflows/build-${{ matrix.distro.name }}.sh DEPS
+
+      - name: Build the "${{ matrix.distro.name }}:${{ matrix.distro.tag }}" initrd image
+        run: ./.github/workflows/build-${{ matrix.distro.name }}.sh INITRD
+
+      - name: Build the "${{ matrix.distro.name }}:${{ matrix.distro.tag }}" sysext image
+        run: ./.github/workflows/build-${{ matrix.distro.name }}.sh SYSEXT
