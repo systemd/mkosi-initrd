@@ -156,7 +156,7 @@ Once that's done, we can build a sysext:
 ```bash
 sudo PYTHONPATH=$PWD/../mkosi python -m mkosi --default fedora.mkosi -f \
   --image-version=$KVER-ssh \
-  --base-image=mkosi.output/initrd_$KVER.d \
+  --base-image=mkosi.output/initrd_$KVER \
   --format=gpt_squashfs --environment=SYSEXT=initrd-$KVER-ssh \
   --package='!*,openssh-server'
 ```
