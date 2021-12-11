@@ -16,8 +16,7 @@ for phase in "${PHASES[@]}"; do
             rm -fr mkosi.output
 
             # Can't use `uname -r`, since we're in a container
-            KVER="$(rpm -q kernel-core --qf "%{version}-%{release}.%{arch}\n" | sed 1q)"
-            [[ -e "kernel-core-$KVER.rpm" ]] || dnf -y download "kernel-core-$KVER"
+            KVER="$(sed 1q <(rpm -q kernel-core --qf "%{version}-%{release}.%{arch}\n" | sort -Vr))"
             python3 -m mkosi --default fedora.mkosi \
                              --image-version="$KVER" \
                              --environment=KERNEL_VERSION="$KVER" \
@@ -29,8 +28,7 @@ for phase in "${PHASES[@]}"; do
             rm -fr mkosi.output
 
             # Can't use `uname -r`, since we're in a container
-            KVER="$(rpm -q kernel-core --qf "%{version}-%{release}.%{arch}\n" | sed 1q)"
-            [[ -e "kernel-core-$KVER.rpm" ]] || dnf -y download "kernel-core-$KVER"
+            KVER="$(sed 1q <(rpm -q kernel-core --qf "%{version}-%{release}.%{arch}\n" | sort -Vr))"
             # Build the base initrd
             python3 -m mkosi --default fedora.mkosi \
                              --image-version="$KVER" \
