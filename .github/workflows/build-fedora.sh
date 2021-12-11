@@ -10,7 +10,7 @@ for phase in "${PHASES[@]}"; do
     case "$phase" in
         DEPS)
             echo "Installing necessary dependencies"
-            dnf -y install dnf-plugins-core kernel-core mkosi python3-pyxattr systemd zstd
+            dnf -y install dnf-plugins-core kernel-core mkosi python3-pyxattr qemu-kvm systemd zstd
             ;;
         INITRD)
             rm -fr mkosi.output
@@ -23,6 +23,12 @@ for phase in "${PHASES[@]}"; do
                              -f build
             # Check if the image was indeed generated
             stat "mkosi.output/initrd_$KVER.cpio.zstd"
+
+            # Basic boot test
+            timeout -k 10 5m qemu-kvm -m 512 -nographic \
+                                      -initrd "mkosi.output/initrd_$KVER.cpio.zstd" \
+                                      -kernel "/usr/lib/modules/$KVER/vmlinuz" \
+                                      -append "rd.systemd.unit=systemd-poweroff.service rd.debug console=ttyS0"
             ;;
         SYSEXT)
             rm -fr mkosi.output
