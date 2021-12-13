@@ -6,6 +6,11 @@ set -o pipefail
 # shellcheck disable=SC2206
 PHASES=(${@:-DEPS INITRD})
 
+if rpm -q kernel-core >/dev/null; then
+    # Can't use `uname -r`, since we're in a container
+    KVER="$(sed 1q <(rpm -q kernel-core --qf "%{version}-%{release}.%{arch}\n" | sort -Vr))"
+fi
+
 for phase in "${PHASES[@]}"; do
     case "$phase" in
         DEPS)
@@ -15,8 +20,6 @@ for phase in "${PHASES[@]}"; do
         INITRD)
             rm -fr mkosi.output
 
-            # Can't use `uname -r`, since we're in a container
-            KVER="$(sed 1q <(rpm -q kernel-core --qf "%{version}-%{release}.%{arch}\n" | sort -Vr))"
             python3 -m mkosi --default fedora.mkosi \
                              --image-version="$KVER" \
                              --environment=KERNEL_VERSION="$KVER" \
@@ -33,8 +36,6 @@ for phase in "${PHASES[@]}"; do
         SYSEXT)
             rm -fr mkosi.output
 
-            # Can't use `uname -r`, since we're in a container
-            KVER="$(sed 1q <(rpm -q kernel-core --qf "%{version}-%{release}.%{arch}\n" | sort -Vr))"
             # Build the base initrd
             python3 -m mkosi --default fedora.mkosi \
                              --image-version="$KVER" \
