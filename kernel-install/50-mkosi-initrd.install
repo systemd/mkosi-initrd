@@ -1,0 +1,33 @@
+#!/usr/bin/bash
+# SPDX-License-Identifier: LGPL-2.1-or-later
+export LANG=C
+
+COMMAND="$1"
+KERNEL_VERSION="$2"
+BOOT_DIR_ABS="$3"
+KERNEL_IMAGE="$4"
+
+# Skip this plugin if we're using a different generator.
+[ "${KERNEL_INSTALL_INITRD_GENERATOR:-mkosi-initrd}" != "mkosi-initrd" ] && exit 0
+
+
+: "${KERNEL_INSTALL_STAGING_AREA:?KERNEL_INSTALL_STAGING_AREA must be set}"
+
+case "$COMMAND" in
+    add)
+        BUILD_DIR=$(mktemp -d -p /var/tmp)
+        pushd "$BUILD_DIR" || exit 1
+        cp /usr/lib/mkosi-initrd/fedora.mkosi /usr/lib/mkosi-initrd/mkosi.finalize ./
+        mkosi --default fedora.mkosi \
+              --finalize-script=mkosi.finalize \
+              --image-version="$KERNEL_VERSION" \
+              --environment=KERNEL_VERSION="$KERNEL_VERSION" \
+              -o "${KERNEL_INSTALL_STAGING_AREA}/initrd"
+        rm -rf "$BUILD_DIR"
+        popd || :
+        ;;
+
+    remove)
+        ;;
+esac
+exit 0

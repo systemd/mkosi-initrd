@@ -7,11 +7,11 @@
 [Output]
 ImageId=initrd
 Format=cpio
+ManifestFormat=
 Compress=zstd
 
 # This will create the cache and output directories if they aren't already in place
 Cache=mkosi.cache
-OutputDirectory=mkosi.output
 
 [Content]
 BasePackages=conditional
