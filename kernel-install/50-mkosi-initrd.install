@@ -1,5 +1,6 @@
 #!/usr/bin/bash
 # SPDX-License-Identifier: LGPL-2.1-or-later
+set -e
 export LANG=C
 
 COMMAND="$1"
@@ -19,15 +20,19 @@ case "$COMMAND" in
         [ "$#" -gt "$INITRD_OPTIONS_SHIFT" ] && exit 0
 
         BUILD_DIR=$(mktemp -d -p /var/tmp)
-        pushd "$BUILD_DIR" || exit 1
+        pushd "$BUILD_DIR"
         cp /usr/lib/mkosi-initrd/fedora.mkosi /usr/lib/mkosi-initrd/mkosi.finalize ./
-        mkosi --default fedora.mkosi \
-              --finalize-script=mkosi.finalize \
-              --image-version="$KERNEL_VERSION" \
-              --environment=KERNEL_VERSION="$KERNEL_VERSION" \
-              -o "${KERNEL_INSTALL_STAGING_AREA}/initrd"
-        rm -rf "$BUILD_DIR"
-        popd || :
+        (
+            [ "$KERNEL_INSTALL_VERBOSE" -gt 0 ] && set -x
+
+            mkosi --default fedora.mkosi \
+                  --finalize-script=mkosi.finalize \
+                  --image-version="$KERNEL_VERSION" \
+                  --environment=KERNEL_VERSION="$KERNEL_VERSION" \
+                  -o "${KERNEL_INSTALL_STAGING_AREA}/initrd"
+            rm -rf "$BUILD_DIR"
+        )
+        popd
         ;;
 
     remove)
