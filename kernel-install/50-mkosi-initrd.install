@@ -21,12 +21,11 @@ case "$COMMAND" in
 
         BUILD_DIR=$(mktemp -d -p /var/tmp)
         pushd "$BUILD_DIR"
-        cp /usr/lib/mkosi-initrd/fedora.mkosi /usr/lib/mkosi-initrd/mkosi.finalize ./
         (
             [ "$KERNEL_INSTALL_VERBOSE" -gt 0 ] && set -x
 
-            mkosi --default fedora.mkosi \
-                  --finalize-script=mkosi.finalize \
+            mkosi --default /usr/lib/mkosi-initrd/fedora.mkosi \
+                  --finalize-script=/usr/lib/mkosi-initrd/mkosi.finalize \
                   --image-version="$KERNEL_VERSION" \
                   --environment=KERNEL_VERSION="$KERNEL_VERSION" \
                   -o "${KERNEL_INSTALL_STAGING_AREA}/initrd"
