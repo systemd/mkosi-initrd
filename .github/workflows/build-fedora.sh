@@ -20,6 +20,7 @@ for phase in "${PHASES[@]}"; do
             ;;
         INITRD)
             rm -fr mkosi.output
+            mkdir mkosi.output
 
             python3 -m mkosi --default fedora.mkosi \
                              --image-version="$KVER" \
@@ -56,6 +57,7 @@ for phase in "${PHASES[@]}"; do
             ;;
         SYSEXT)
             rm -fr mkosi.output
+            mkdir mkosi.output
 
             # Build the base initrd
             python3 -m mkosi --default fedora.mkosi \
