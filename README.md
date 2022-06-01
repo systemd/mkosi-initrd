@@ -1,17 +1,21 @@
 # mkosi-initrd — Build Initrd Images Using Distro Packages
 
-Very brief instructions:
+Very brief instructions for use on Fedora:
 ```
-cd ~/src
-git clone https://github.com/keszybz/mkosi
-git clone https://github.com/keszybz/mkosi-initrd
-cd mkosi-initrd
-mkdir mkosi.cache
-dnf download kernel-core-5.12.5-300.fc34.x86_64
-sudo PYTHONPATH=$HOME/src/mkosi python3 -m mkosi -f -o initrd.cpio.zstd
+mkdir -p /etc/kernel/
+echo 'initrd_generator=mkosi-initrd' >>/etc/kernel/install.conf
+
+# Until https://github.com/dracutdevs/dracut/pull/1691 is merged
+mkdir -p /etc/kernel/install.d
+ln -s /dev/null /etc/kernel/install.d/50-dracut.install
+
+dnf copr enable zbyszek/mkosi-initrd
+dnf install mkosi-initrd
+
+# Install a kernel.
+# This will trigger /usr/lib/kernel/install.d/50-mkosi-initrd.install.
+dnf upgrade kernel
 ```
 
-Requirements:
-- mkosi >= 10
-- systemd >= 249
-- util-linux >= 2.37
+See docs/fedora.md for instructions how to build and use an image manually.
+As integration is added for other distros, instructions here will be updated.
