@@ -18,8 +18,7 @@ def dictify(f):
 
 def buildroot():
     buildroot = os.getenv('BUILDROOT')
-    buildroot = pathlib.Path(buildroot)
-    return buildroot
+    return pathlib.Path(buildroot)
 
 def copy_in_modules_kver(root, kver):
     file_filter = ['--nonmatching',
