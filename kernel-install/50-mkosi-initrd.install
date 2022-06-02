@@ -12,7 +12,7 @@ INITRD_OPTIONS_SHIFT=4
 # Skip this plugin if we're using a different generator.
 [ "${KERNEL_INSTALL_INITRD_GENERATOR:-mkosi-initrd}" != "mkosi-initrd" ] && exit 0
 
-: "${KERNEL_INSTALL_STAGING_AREA:?KERNEL_INSTALL_STAGING_AREA must be set}"
+: "${KERNEL_INSTALL_STAGING_AREA:?}"
 
 case "$COMMAND" in
     add)
