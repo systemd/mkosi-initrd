@@ -213,7 +213,7 @@ def write_sysext_release(root, sysext_name):
         make_sysext_release(root, sysext_name, out)
 
     print('Setting user.extension-release.strict=0 on the extension-release file')
-    xattr.set(output, 'user.extension-release.strict', '0');
+    xattr.set(output, 'user.extension-release.strict', '0')
 
 def make_init_symlink(root):
     init = root / 'init'
@@ -288,7 +288,7 @@ def do_sysext(root, sysext_name):
 
 if __name__ == '__main__':
     if sys.argv[1] != 'final':
-        exit(0)
+        sys.exit(0)
 
     root = buildroot()
 
