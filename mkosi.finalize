@@ -20,15 +20,43 @@ def buildroot():
     buildroot = os.getenv('BUILDROOT')
     return pathlib.Path(buildroot)
 
-def copy_in_modules_kver(root, kver):
+
+def copy_path(oldpath, newpath, should_skip):
+    newpath.mkdir(exist_ok=True)
+
+    for entry in os.scandir(oldpath):
+        if should_skip(entry.path):
+            print(f'Not copying {entry.path}')
+
+        newentry = newpath / entry.name
+        if entry.is_dir(follow_symlinks=False):
+            copy_path(entry.path, newentry, should_skip)
+        elif entry.is_symlink():
+            target = os.readlink(entry.path)
+            newentry.symlink_to(target)
+            shutil.copystat(entry.path, newentry, follow_symlinks=False)
+        else:
+            shutil.copy2(entry.path, newentry, follow_symlinks=False)
+
+    shutil.copystat(oldpath, newpath, follow_symlinks=True)
+
+def copy_in_modules_from_fs(root, kver):
+    source = f'/usr/lib/modules/{kver}'
+    if not os.path.exists(source + '/kernel'):
+        return False
+
+    copy_path(pathlib.Path(source),
+              root / source[1:],
+              lambda path: path.endswith(('/bls.conf',
+                                          '/vmlinuz')))
+
+def copy_in_modules_from_cpio(root, kver):
     file_filter = ['--nonmatching',
                    './lib/modules/*/bls.conf',      # a grub abomination with $grub_variables
                    './lib/modules/*/vmlinuz']
 
     path = pathlib.Path(sys.argv[0]).parent
     file = path / f'kernel-core-{kver}.rpm'
-
-    print(f'Setting up for kernel {kver}')
 
     if not file.exists():
         print(f'{file} not found, downloading.')
@@ -41,6 +69,13 @@ def copy_in_modules_kver(root, kver):
         subprocess.run(['cpio', '-i', '--make-directories', '--quiet', '-D', root, *file_filter],
                        stdin=archive.stdout,
                        check=True)
+
+def copy_in_modules_kver(root, kver):
+    print(f'Installing modules for kernel {kver}')
+
+    good = copy_in_modules_from_fs(root, kver)
+    if good is False:
+        copy_in_modules_from_cpio(root, kver)
 
     subprocess.run(['depmod', '-a', '-w', '-b', root, kver], check=True)
 
