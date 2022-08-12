@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
 
 import ast
+import fnmatch
 import functools
 import os
 import pathlib
@@ -40,6 +41,33 @@ def copy_path(oldpath, newpath, should_skip):
 
     shutil.copystat(oldpath, newpath, follow_symlinks=True)
 
+def kernel_core_skip_file(path):
+    patterns = ('*/bls.conf',
+                '*/vmlinuz',
+                '/boot/*')
+
+    return any(fnmatch.fnmatch(path, pat)
+               for pat in patterns)
+
+def copy_in_modules_from_rpmls(root, kver):
+    rpm = f'kernel-core-{kver}'
+    try:
+        out = subprocess.check_output(['rpm', '-ql', rpm], text=True)
+    except (FileNotFoundError, CalledProcessError) as e:
+        print(f'Cannot query file list of {rpm}:', e)
+        return False
+
+    files = out.splitlines()
+    for file in files:
+        if kernel_core_skip_file(file):
+            continue
+        if pathlib.Path(file).is_dir():
+            continue
+
+        dest = root / file[1:]
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(file, dest, follow_symlinks=False)
+
 def copy_in_modules_from_fs(root, kver):
     source = f'/usr/lib/modules/{kver}'
     if not os.path.exists(source + '/kernel'):
@@ -47,8 +75,7 @@ def copy_in_modules_from_fs(root, kver):
 
     copy_path(pathlib.Path(source),
               root / source[1:],
-              lambda path: path.endswith(('/bls.conf',
-                                          '/vmlinuz')))
+              filter_out_kernel_core_files)
 
 def copy_in_modules_from_cpio(root, kver):
     file_filter = ['--nonmatching',
@@ -73,7 +100,9 @@ def copy_in_modules_from_cpio(root, kver):
 def copy_in_modules_kver(root, kver):
     print(f'Installing modules for kernel {kver}')
 
-    good = copy_in_modules_from_fs(root, kver)
+    good = copy_in_modules_from_rpmls(root, kver)
+    if good is False:
+        good = copy_in_modules_from_fs(root, kver)
     if good is False:
         copy_in_modules_from_cpio(root, kver)
 
