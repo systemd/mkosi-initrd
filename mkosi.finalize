@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: LGPL-2.1-or-later
 
 import ast
+import fnmatch
 import functools
 import os
 import pathlib
@@ -20,15 +21,70 @@ def buildroot():
     buildroot = os.getenv('BUILDROOT')
     return pathlib.Path(buildroot)
 
-def copy_in_modules_kver(root, kver):
+
+def copy_path(oldpath, newpath, should_skip):
+    newpath.mkdir(exist_ok=True)
+
+    for entry in os.scandir(oldpath):
+        if should_skip(entry.path):
+            print(f'Not copying {entry.path}')
+
+        newentry = newpath / entry.name
+        if entry.is_dir(follow_symlinks=False):
+            copy_path(entry.path, newentry, should_skip)
+        elif entry.is_symlink():
+            target = os.readlink(entry.path)
+            newentry.symlink_to(target)
+            shutil.copystat(entry.path, newentry, follow_symlinks=False)
+        else:
+            shutil.copy2(entry.path, newentry, follow_symlinks=False)
+
+    shutil.copystat(oldpath, newpath, follow_symlinks=True)
+
+def kernel_core_skip_file(path):
+    patterns = ('*/bls.conf',
+                '*/vmlinuz',
+                '*/doc/*',
+                '/boot/*')
+
+    return any(fnmatch.fnmatch(path, pat)
+               for pat in patterns)
+
+def copy_in_modules_from_rpmls(root, kver):
+    rpm = f'kernel-core-{kver}'
+    try:
+        out = subprocess.check_output(['rpm', '-ql', rpm], text=True)
+    except (FileNotFoundError, CalledProcessError) as e:
+        print(f'Cannot query file list of {rpm}:', e)
+        return False
+
+    files = out.splitlines()
+    for file in files:
+        if kernel_core_skip_file(file):
+            continue
+        if pathlib.Path(file).is_dir():
+            continue
+
+        dest = root / file[1:]
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(file, dest, follow_symlinks=False)
+
+def copy_in_modules_from_fs(root, kver):
+    source = f'/usr/lib/modules/{kver}'
+    if not os.path.exists(source + '/kernel'):
+        return False
+
+    copy_path(pathlib.Path(source),
+              root / source[1:],
+              filter_out_kernel_core_files)
+
+def copy_in_modules_from_cpio(root, kver):
     file_filter = ['--nonmatching',
                    './lib/modules/*/bls.conf',      # a grub abomination with $grub_variables
                    './lib/modules/*/vmlinuz']
 
     path = pathlib.Path(sys.argv[0]).parent
     file = path / f'kernel-core-{kver}.rpm'
-
-    print(f'Setting up for kernel {kver}')
 
     if not file.exists():
         print(f'{file} not found, downloading.')
@@ -41,6 +97,15 @@ def copy_in_modules_kver(root, kver):
         subprocess.run(['cpio', '-i', '--make-directories', '--quiet', '-D', root, *file_filter],
                        stdin=archive.stdout,
                        check=True)
+
+def copy_in_modules_kver(root, kver):
+    print(f'Installing modules for kernel {kver}')
+
+    good = copy_in_modules_from_rpmls(root, kver)
+    if good is False:
+        good = copy_in_modules_from_fs(root, kver)
+    if good is False:
+        copy_in_modules_from_cpio(root, kver)
 
     subprocess.run(['depmod', '-a', '-w', '-b', root, kver], check=True)
 
@@ -149,7 +214,7 @@ def write_sysext_release(root, sysext_name):
         make_sysext_release(root, sysext_name, out)
 
     print('Setting user.extension-release.strict=0 on the extension-release file')
-    xattr.set(output, 'user.extension-release.strict', '0');
+    xattr.set(output, 'user.extension-release.strict', '0')
 
 def make_init_symlink(root):
     init = root / 'init'
@@ -224,7 +289,7 @@ def do_sysext(root, sysext_name):
 
 if __name__ == '__main__':
     if sys.argv[1] != 'final':
-        exit(0)
+        sys.exit(0)
 
     root = buildroot()
 
