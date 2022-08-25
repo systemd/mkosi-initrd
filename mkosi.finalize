@@ -44,6 +44,7 @@ def copy_path(oldpath, newpath, should_skip):
 def kernel_core_skip_file(path):
     patterns = ('*/bls.conf',
                 '*/vmlinuz',
+                '*/doc/*',
                 '/boot/*')
 
     return any(fnmatch.fnmatch(path, pat)
