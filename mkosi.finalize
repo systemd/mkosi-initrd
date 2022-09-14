@@ -54,7 +54,7 @@ def copy_in_modules_from_rpmls(root, kver):
     rpm = f'kernel-core-{kver}'
     try:
         out = subprocess.check_output(['rpm', '-ql', rpm], text=True)
-    except (FileNotFoundError, CalledProcessError) as e:
+    except (FileNotFoundError, subprocess.CalledProcessError) as e:
         print(f'Cannot query file list of {rpm}:', e)
         return False
 
