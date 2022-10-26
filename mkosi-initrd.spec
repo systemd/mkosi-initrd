@@ -1,11 +1,11 @@
-%global commit cd7976d0ecab087dfc1c2148a5b4fa27faade196
+%global commit 524dea4cb6f06449c899ec4f98712e263c5952f4
 %global shortcommit %(c=%commit; echo ${c:1:7})
 
 %global forgeurl https://github.com/systemd/mkosi-initrd/
 %forgemeta
 
 Name:           mkosi-initrd
-Version:        0.20220601g%{shortcommit}
+Version:        0.20221026g%{shortcommit}
 Release:        %autorelease
 Summary:        Generator for initrd images using distro packages
 
