@@ -18,9 +18,7 @@ def dictify(f):
     return functools.update_wrapper(wrapper, f)
 
 def buildroot():
-    buildroot = os.getenv('BUILDROOT')
-    return pathlib.Path(buildroot)
-
+    return pathlib.Path(os.getenv('BUILDROOT'))
 
 def copy_path(oldpath, newpath, should_skip):
     newpath.mkdir(exist_ok=True)
@@ -59,8 +57,10 @@ def copy_in_modules_from_rpmls(root, kver):
         return False
 
     files = out.splitlines()
+    installed, skipped = 0, 0
     for file in files:
         if kernel_core_skip_file(file):
+            skipped += 1
             continue
         if pathlib.Path(file).is_dir():
             continue
@@ -68,6 +68,10 @@ def copy_in_modules_from_rpmls(root, kver):
         dest = root / file[1:]
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(file, dest, follow_symlinks=False)
+        installed += 1
+
+    print(f'Installed {installed}/{installed + skipped} files from {rpm}')
+    return True
 
 def copy_in_modules_from_fs(root, kver):
     source = f'/usr/lib/modules/{kver}'
@@ -76,7 +80,9 @@ def copy_in_modules_from_fs(root, kver):
 
     copy_path(pathlib.Path(source),
               root / source[1:],
-              filter_out_kernel_core_files)
+              kernel_core_skip_file)
+    print(f'Copied files from {source}')
+    return True
 
 def copy_in_modules_from_cpio(root, kver):
     file_filter = ['--nonmatching',
@@ -98,13 +104,14 @@ def copy_in_modules_from_cpio(root, kver):
                        stdin=archive.stdout,
                        check=True)
 
+    print(f'Unpacked files from {file}')
+    return True
+
 def copy_in_modules_kver(root, kver):
     print(f'Installing modules for kernel {kver}')
 
-    good = copy_in_modules_from_rpmls(root, kver)
-    if good is False:
-        good = copy_in_modules_from_fs(root, kver)
-    if good is False:
+    copy_in_modules_from_rpmls(root, kver) or \
+        copy_in_modules_from_fs(root, kver) or \
         copy_in_modules_from_cpio(root, kver)
 
     subprocess.run(['depmod', '-a', '-w', '-b', root, kver], check=True)
@@ -287,8 +294,8 @@ def do_sysext(root, sysext_name):
     write_sysext_release(root, sysext_name)
     remove_non_sysext_files(root)
 
-if __name__ == '__main__':
-    if sys.argv[1] != 'final':
+def main(argv):
+    if argv[1] != 'final':
         sys.exit(0)
 
     root = buildroot()
@@ -298,3 +305,6 @@ if __name__ == '__main__':
         do_sysext(root, sysext)
     else:
         do_initrd(root)
+
+if __name__ == '__main__':
+    main(sys.argv)
