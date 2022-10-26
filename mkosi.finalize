@@ -57,8 +57,10 @@ def copy_in_modules_from_rpmls(root, kver):
         return False
 
     files = out.splitlines()
+    installed, skipped = 0, 0
     for file in files:
         if kernel_core_skip_file(file):
+            skipped += 1
             continue
         if pathlib.Path(file).is_dir():
             continue
@@ -66,7 +68,9 @@ def copy_in_modules_from_rpmls(root, kver):
         dest = root / file[1:]
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(file, dest, follow_symlinks=False)
+        installed += 1
 
+    print(f'Installed {installed}/{installed + skipped} files from {rpm}')
     return True
 
 def copy_in_modules_from_fs(root, kver):
@@ -77,6 +81,7 @@ def copy_in_modules_from_fs(root, kver):
     copy_path(pathlib.Path(source),
               root / source[1:],
               kernel_core_skip_file)
+    print(f'Copied files from {source}')
     return True
 
 def copy_in_modules_from_cpio(root, kver):
@@ -99,6 +104,7 @@ def copy_in_modules_from_cpio(root, kver):
                        stdin=archive.stdout,
                        check=True)
 
+    print(f'Unpacked files from {file}')
     return True
 
 def copy_in_modules_kver(root, kver):
