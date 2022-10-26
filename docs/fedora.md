@@ -27,15 +27,14 @@ We pass `KERNEL_VERSION=…` to tell the scripts what version to install.
 
 ```bash
 KVER=`uname -r`
-dnf download kernel-core-$KVER
-sudo PYTHONPATH=$PWD/../mkosi python -m mkosi --default fedora.mkosi -f --image-version=$KVER --environment=KERNEL_VERSION=$KVER
+sudo ../mkosi/bin/mkosi --config fedora.mkosi -f --image-version=$KVER --environment=KERNEL_VERSION=$KVER
 ```
 
 This should produce an image that is about 60 MB:
 
 ```console
 $ KVER=5.14.9-300.fc35.x86_64
-$ sudo PYTHONPATH=$PWD/../mkosi python -m mkosi --default fedora.mkosi -f -o initrd-$KVER.cpio.zst --environment=KERNEL_VERSION=$KVER
+$ sudo mkosi --config fedora.mkosi -f -o initrd-$KVER.cpio.zst --environment=KERNEL_VERSION=$KVER
 ‣ Removing output files…
 ‣ Detaching namespace
 ‣ Setting up temporary workspace.
@@ -144,7 +143,7 @@ grubby --copy-default --add-kernel=/boot/vmlinuz-$KVER --initrd=/boot/initrd_$KV
 First we need to create a version of the initrd image that includes the package metadata:
 
 ```bash
-sudo PYTHONPATH=$PWD/../mkosi python -m mkosi --default fedora.mkosi -f \
+sudo mkosi --config fedora.mkosi -f \
   --image-version=$KVER \
   --environment=KERNEL_VERSION=$KVER \
   --format=directory --clean-package-metadata=no
@@ -152,7 +151,7 @@ sudo PYTHONPATH=$PWD/../mkosi python -m mkosi --default fedora.mkosi -f \
 
 Once that's done, we can build a sysext:
 ```bash
-sudo PYTHONPATH=$PWD/../mkosi python -m mkosi --default fedora.mkosi -f \
+sudo mkosi --config fedora.mkosi -f \
   --image-version=$KVER-ssh \
   --base-image=mkosi.output/initrd_$KVER \
   --format=gpt_squashfs --environment=SYSEXT=initrd-$KVER-ssh \
@@ -162,7 +161,7 @@ sudo PYTHONPATH=$PWD/../mkosi python -m mkosi --default fedora.mkosi -f \
 This should produce an image that is about 1 MB:
 
 ```console
-$ sudo PYTHONPATH=$PWD/../mkosi python -m mkosi --default fedora.mkosi -f \
+$ sudo mkosi --config fedora.mkosi -f \
   --image-version=$KVER \
   --environment=KERNEL_VERSION=$KVER \
   --format=directory --clean-package-metadata=no
@@ -170,7 +169,7 @@ $ sudo PYTHONPATH=$PWD/../mkosi python -m mkosi --default fedora.mkosi -f \
 ‣ Linked mkosi.output/initrd_5.14.9-300.fc35.x86_64
 ‣ Resulting image size is 151.2M.
 
-$ sudo PYTHONPATH=$PWD/../mkosi python -m mkosi --default fedora.mkosi -f --image-version=$KVER-ssh \
+$ sudo mkosi --config fedora.mkosi -f --image-version=$KVER-ssh \
   --base-image=mkosi.output/initrd_$KVER \
   --format=gpt_squashfs --environment=SYSEXT=initrd_$KVER-ssh \
   --package='!*,openssh-server'
@@ -215,7 +214,8 @@ Creating 4.0 filesystem on /home/zbyszek/src/mkosi-initrd/mkosi.output/.mkosi-sq
 ‣ Resulting image size is 808.0K, consumes 776.0K.
 ```
 
-Note: systemd will refuse to load the sysext image if the name is changed from and doesn't match the string `extension-release.initrd_5.14.9-300.fc35.x86_64-ssh` embedded in the image.
+Note: systemd will refuse to load the sysext image if the name is changed
+and doesn't match the string `extension-release.initrd_5.14.9-300.fc35.x86_64-ssh` embedded in the image.
 It also doesn't follow symlinks.
 
 ```console
