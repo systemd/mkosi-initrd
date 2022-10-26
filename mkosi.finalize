@@ -18,9 +18,7 @@ def dictify(f):
     return functools.update_wrapper(wrapper, f)
 
 def buildroot():
-    buildroot = os.getenv('BUILDROOT')
-    return pathlib.Path(buildroot)
-
+    return pathlib.Path(os.getenv('BUILDROOT'))
 
 def copy_path(oldpath, newpath, should_skip):
     newpath.mkdir(exist_ok=True)
@@ -290,8 +288,8 @@ def do_sysext(root, sysext_name):
     write_sysext_release(root, sysext_name)
     remove_non_sysext_files(root)
 
-if __name__ == '__main__':
-    if sys.argv[1] != 'final':
+def main(argv):
+    if argv[1] != 'final':
         sys.exit(0)
 
     root = buildroot()
@@ -301,3 +299,6 @@ if __name__ == '__main__':
         do_sysext(root, sysext)
     else:
         do_initrd(root)
+
+if __name__ == '__main__':
+    main(sys.argv)
