@@ -69,6 +69,8 @@ def copy_in_modules_from_rpmls(root, kver):
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(file, dest, follow_symlinks=False)
 
+    return True
+
 def copy_in_modules_from_fs(root, kver):
     source = f'/usr/lib/modules/{kver}'
     if not os.path.exists(source + '/kernel'):
@@ -77,6 +79,7 @@ def copy_in_modules_from_fs(root, kver):
     copy_path(pathlib.Path(source),
               root / source[1:],
               kernel_core_skip_file)
+    return True
 
 def copy_in_modules_from_cpio(root, kver):
     file_filter = ['--nonmatching',
@@ -98,13 +101,13 @@ def copy_in_modules_from_cpio(root, kver):
                        stdin=archive.stdout,
                        check=True)
 
+    return True
+
 def copy_in_modules_kver(root, kver):
     print(f'Installing modules for kernel {kver}')
 
-    good = copy_in_modules_from_rpmls(root, kver)
-    if good is False:
-        good = copy_in_modules_from_fs(root, kver)
-    if good is False:
+    copy_in_modules_from_rpmls(root, kver) or \
+        copy_in_modules_from_fs(root, kver) or \
         copy_in_modules_from_cpio(root, kver)
 
     subprocess.run(['depmod', '-a', '-w', '-b', root, kver], check=True)
