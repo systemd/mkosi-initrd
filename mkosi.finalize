@@ -76,7 +76,7 @@ def copy_in_modules_from_fs(root, kver):
 
     copy_path(pathlib.Path(source),
               root / source[1:],
-              filter_out_kernel_core_files)
+              kernel_core_skip_file)
 
 def copy_in_modules_from_cpio(root, kver):
     file_filter = ['--nonmatching',
