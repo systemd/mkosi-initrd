@@ -5,7 +5,7 @@ Very brief instructions for use on Fedora:
 mkdir -p /etc/kernel/
 echo 'initrd_generator=mkosi-initrd' >>/etc/kernel/install.conf
 
-# Until https://github.com/dracutdevs/dracut/pull/1691 is merged
+# Until https://github.com/dracutdevs/dracut/pull/1825 is merged
 mkdir -p /etc/kernel/install.d
 ln -s /dev/null /etc/kernel/install.d/50-dracut.install
 
