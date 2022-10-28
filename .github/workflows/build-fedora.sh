@@ -8,6 +8,18 @@ PHASES=(${@:-DEPS INITRD_BASIC})
 SYSTEMD_LOG_OPTS="systemd.log_target=console udev.log_level=info systemd.default_standard_output=journal+console"
 MKOSI_CACHE="/var/tmp/mkosiinitrd$(</etc/machine-id).cache"
 
+# Poor man's `udevadm wait` (which we can't use, since we're in a container)
+wait_for_dev() {
+    local i
+
+    for ((i = 0; i < 30; i++)); do
+        [[ -e "${1:?}" ]] && return 0
+        sleep 1
+    done
+
+    return 1
+}
+
 if [[ ! -d "$MKOSI_CACHE" ]]; then
     mkdir -v "$MKOSI_CACHE"
 fi
@@ -111,6 +123,7 @@ for phase in "${PHASES[@]}"; do
             lvm lvcreate -an -l 100%FREE -n lv0 "vg_root"
             lvm lvchange -ay "vg_root"
             lvm lvs
+            wait_for_dev /dev/vg_root/lv0
             mkfs.ext4 -L "root" /dev/vg_root/lv0
 
             # Populate the rootfs with a basic OS image
@@ -232,6 +245,7 @@ for phase in "${PHASES[@]}"; do
             lvm lvcreate -an -l 100%FREE -n lv0 "vg_root"
             lvm lvchange -ay "vg_root"
             lvm lvs
+            wait_for_dev /dev/vg_root/lv0
             mkfs.ext4 -L "root" /dev/vg_root/lv0
             rm -fr mkosi.extra
 
