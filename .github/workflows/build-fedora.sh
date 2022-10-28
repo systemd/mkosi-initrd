@@ -22,9 +22,11 @@ for phase in "${PHASES[@]}"; do
         DEPS)
             echo "Installing necessary dependencies"
             dnf -y install \
+                cryptsetup \
                 dnf-plugins-core \
                 dnsmasq \
                 iproute \
+                jq \
                 kernel-core \
                 mkosi \
                 python3-pyxattr \
@@ -73,6 +75,56 @@ for phase in "${PHASES[@]}"; do
 
             # Cleanup
             rm -fr mkosi.output _rootfs
+            ;;
+        INITRD_LUKS)
+            rm -fr mkosi.output mkosi.extra
+            mkdir mkosi.output mkosi.extra
+
+            luks_passphrase="H3lloW0rld!"
+            # Instruct mkosi to copy the password file into the initrd image
+            # so we can use it to unlock the rootfs
+            echo -ne "$luks_passphrase" >mkosi.extra/luks.passphrase
+            # Build the initrd with dm-crypt support
+            python3 -m mkosi --cache "$MKOSI_CACHE" \
+                             --default fedora.mkosi \
+                             --package="cryptsetup" \
+                             --image-version="$KVER" \
+                             --environment=KERNEL_VERSION="$KVER" \
+                             -f build
+            # Check if the image was indeed generated
+            stat "mkosi.output/initrd_$KVER.cpio.zstd"
+
+            # Build a basic LUKS encrypted OS image to test the initrd with
+            # Passphrase is provided by the mkosi.passphrase file created above
+            rm -fr _rootfs mkosi.extra
+            mkdir _rootfs
+            pushd _rootfs
+            # Create a LUKS password file for mkosi
+            echo -ne "$luks_passphrase" >mkosi.passphrase
+            # shellcheck source=/dev/null
+            source <(grep -E "(ID|VERSION_ID)" /etc/os-release)
+            mkosi --cache "$MKOSI_CACHE" \
+                  --distribution="$ID" \
+                  --release="$VERSION_ID" \
+                  --encrypt=all \
+                  --format=gpt_btrfs \
+                  --output=rootfs.img
+            popd
+
+            # Boot the initrd with an OS image
+            lodev="$(losetup --show -f -P _rootfs/rootfs.img)"
+            luks_uuid="$(cryptsetup luksUUID "${lodev}p1")"
+            echo "LUKS rootfs UUID: $luks_uuid"
+            losetup -d "$lodev"
+            luks_cmdline="rd.luks.key=/luks.passphrase rd.luks.uuid=$luks_uuid"
+            timeout -k 10 5m qemu-kvm -m 1024 -smp "$(nproc)" -nographic \
+                                      -initrd "mkosi.output/initrd_$KVER.cpio.zstd" \
+                                      -kernel "/usr/lib/modules/$KVER/vmlinuz" \
+                                      -drive "format=raw,cache=unsafe,file=_rootfs/rootfs.img" \
+                                      -append "$luks_cmdline root=LABEL=root rd.debug $SYSTEMD_LOG_OPTS console=ttyS0 systemd.unit=systemd-poweroff.service systemd.default_timeout_start_sec=240"
+
+            # Cleanup
+            rm -fr mkosi.output mkosi.extra mkosi.passphrase
             ;;
         INITRD_ISCSI)
             rm -fr mkosi.output
