@@ -35,6 +35,9 @@ jobs:
       - name: Boot "${{ matrix.distro.name }}:${{ matrix.distro.tag }}" with the initrd
         run: ./.github/workflows/build-${{ matrix.distro.name }}.sh INITRD_BASIC
 
+      - name: Boot "${{ matrix.distro.name }}:${{ matrix.distro.tag }}" with rootfs on LVM
+        run: ./.github/workflows/build-${{ matrix.distro.name }}.sh INITRD_LVM
+
       - name: Build & boot "${{ matrix.distro.name }}:${{ matrix.distro.tag }}" with a LUKS encrypted rootfs
         run: ./.github/workflows/build-${{ matrix.distro.name }}.sh INITRD_LUKS
 

@@ -25,14 +25,17 @@ for phase in "${PHASES[@]}"; do
                 cryptsetup \
                 dnf-plugins-core \
                 dnsmasq \
+                e2fsprogs \
                 iproute \
                 jq \
                 kernel-core \
+                lvm2 \
                 mkosi \
                 python3-pyxattr \
                 qemu-kvm \
                 scsi-target-utils \
                 systemd \
+                util-linux \
                 zstd
             ;;
         INITRD_BASIC)
@@ -65,6 +68,69 @@ for phase in "${PHASES[@]}"; do
                                       -initrd "mkosi.output/initrd_$KVER.cpio.zstd" \
                                       -kernel "/usr/lib/modules/$KVER/vmlinuz" \
                                       -append "rd.systemd.unit=systemd-poweroff.service rd.debug $SYSTEMD_LOG_OPTS console=ttyS0"
+
+            # Boot the initrd with an OS image
+            timeout -k 10 5m qemu-kvm -m 1024 -smp "$(nproc)" -nographic \
+                                      -initrd "mkosi.output/initrd_$KVER.cpio.zstd" \
+                                      -kernel "/usr/lib/modules/$KVER/vmlinuz" \
+                                      -drive "format=raw,cache=unsafe,file=_rootfs/rootfs.img" \
+                                      -append "root=LABEL=root rd.debug $SYSTEMD_LOG_OPTS console=ttyS0 systemd.unit=systemd-poweroff.service systemd.default_timeout_start_sec=240"
+
+            # Cleanup
+            rm -fr mkosi.output _rootfs
+            ;;
+        INITRD_LVM)
+            rm -fr mkosi.output
+            mkdir mkosi.output
+            # Build the initrd with LVM support
+            python3 -m mkosi --cache "$MKOSI_CACHE" \
+                             --default fedora.mkosi \
+                             --package="lvm2" \
+                             --image-version="$KVER" \
+                             --environment=KERNEL_VERSION="$KVER" \
+                             -f build
+            ## Check if the image was indeed generated
+            stat "mkosi.output/initrd_$KVER.cpio.zstd"
+
+            # Build a basic LVM image to test the initrd with
+            rm -fr _rootfs
+            mkdir _rootfs
+            pushd _rootfs
+
+            # Create the base LVM layout with an ext4 rootfs
+            dd if=/dev/zero of=rootfs.img bs=1M count=3000
+            lodev="$(losetup --show -f -P rootfs.img)"
+            echo "type=E6D6D379-F507-44C2-A23C-238F2A3DF928 bootable" | sfdisk -X gpt "$lodev"
+            lvm pvcreate "${lodev}p1"
+            lvm pvs
+            lvm vgcreate "vg_root" "${lodev}p1"
+            lvm vgchange -ay "vg_root"
+            lvm vgs
+            # Note: we need to create the LV as "deactivated" (-an) and activate it
+            #       separately later as a workaround since we're running in a container
+            lvm lvcreate -an -l 100%FREE -n lv0 "vg_root"
+            lvm lvchange -ay "vg_root"
+            lvm lvs
+            mkfs.ext4 -L "root" /dev/vg_root/lv0
+
+            # Populate the rootfs with a basic OS image
+            mkdir mnt
+            mount /dev/vg_root/lv0 mnt
+            # shellcheck source=/dev/null
+            source <(grep -E "(ID|VERSION_ID)" /etc/os-release)
+            mkosi --cache "$MKOSI_CACHE" \
+                  --distribution="$ID" \
+                  --release="$VERSION_ID" \
+                  --format=directory \
+                  --output=out
+            # Note: this is necessary, since mkosi requires the target directory
+            #       to not exist and we don't want it to remove the mnt mountpoint
+            (shopt -s dotglob && mv out/* mnt/)
+            # Wrap up the LVM image
+            umount mnt
+            vgchange -an "vg_root"
+            losetup -d "$lodev"
+            popd
 
             # Boot the initrd with an OS image
             timeout -k 10 5m qemu-kvm -m 1024 -smp "$(nproc)" -nographic \
