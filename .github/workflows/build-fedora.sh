@@ -192,6 +192,80 @@ for phase in "${PHASES[@]}"; do
             # Cleanup
             rm -fr mkosi.output mkosi.extra mkosi.passphrase
             ;;
+        INITRD_LUKS_LVM)
+            rm -fr mkosi.output mkosi.extra
+            mkdir mkosi.output mkosi.extra
+
+            luks_passphrase="H3lloW0rld!"
+            # Instruct mkosi to copy the password file into the initrd image
+            # so we can use it to unlock the rootfs
+            echo -ne "$luks_passphrase" >mkosi.extra/luks.passphrase
+            # Build the initrd with LVM support
+            python3 -m mkosi --cache "$MKOSI_CACHE" \
+                             --default fedora.mkosi \
+                             --package="cryptsetup,lvm2" \
+                             --image-version="$KVER" \
+                             --environment=KERNEL_VERSION="$KVER" \
+                             -f build
+            ## Check if the image was indeed generated
+            stat "mkosi.output/initrd_$KVER.cpio.zstd"
+
+            # Build a basic LVM image to test the initrd with
+            rm -fr _rootfs
+            mkdir _rootfs
+            pushd _rootfs
+
+            # Create the base LVM layout with an ext4 rootfs
+            dd if=/dev/zero of=rootfs.img bs=1M count=3000
+            lodev="$(losetup --show -f -P rootfs.img)"
+            echo "type=0FC63DAF-8483-4772-8E79-3D69D8477DE4 bootable" | sfdisk -X gpt "$lodev"
+            cryptsetup --key-file ../mkosi.extra/luks.passphrase -q --use-urandom --pbkdf pbkdf2 --pbkdf-force-iterations 1000 luksFormat "${lodev}p1"
+            cryptsetup --key-file ../mkosi.extra/luks.passphrase luksOpen "${lodev}p1" lvm_root
+            luks_uuid="$(cryptsetup luksUUID "${lodev}p1")"
+            lvm pvcreate /dev/mapper/lvm_root
+            lvm pvs
+            lvm vgcreate "vg_root" /dev/mapper/lvm_root
+            lvm vgchange -ay "vg_root"
+            lvm vgs
+            # Note: we need to create the LV as "deactivated" (-an) and activate it
+            #       separately later as a workaround since we're running in a container
+            lvm lvcreate -an -l 100%FREE -n lv0 "vg_root"
+            lvm lvchange -ay "vg_root"
+            lvm lvs
+            mkfs.ext4 -L "root" /dev/vg_root/lv0
+            rm -fr mkosi.extra
+
+            # Populate the rootfs with a basic OS image
+            mkdir mnt
+            mount /dev/vg_root/lv0 mnt
+            # shellcheck source=/dev/null
+            source <(grep -E "(ID|VERSION_ID)" /etc/os-release)
+            mkosi --cache "$MKOSI_CACHE" \
+                  --distribution="$ID" \
+                  --release="$VERSION_ID" \
+                  --format=directory \
+                  --output=out
+            # Note: this is necessary, since mkosi requires the target directory
+            #       to not exist and we don't want it to remove the mnt mountpoint
+            (shopt -s dotglob && mv out/* mnt/)
+            # Wrap up the LUKS+LVM image
+            umount mnt
+            vgchange -an "vg_root"
+            cryptsetup close lvm_root
+            losetup -d "$lodev"
+            popd
+
+            # Boot the initrd with an OS image
+            luks_cmdline="rd.luks.key=/luks.passphrase rd.luks.uuid=$luks_uuid"
+            timeout -k 10 5m qemu-kvm -m 1024 -smp "$(nproc)" -nographic \
+                                      -initrd "mkosi.output/initrd_$KVER.cpio.zstd" \
+                                      -kernel "/usr/lib/modules/$KVER/vmlinuz" \
+                                      -drive "format=raw,cache=unsafe,file=_rootfs/rootfs.img" \
+                                      -append "$luks_cmdline root=LABEL=root rd.debug $SYSTEMD_LOG_OPTS console=ttyS0 systemd.unit=systemd-poweroff.service systemd.default_timeout_start_sec=240"
+
+            # Cleanup
+            rm -fr mkosi.output _rootfs
+            ;;
         INITRD_ISCSI)
             rm -fr mkosi.output
             mkdir mkosi.output

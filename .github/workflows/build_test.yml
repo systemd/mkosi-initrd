@@ -41,6 +41,9 @@ jobs:
       - name: Build & boot "${{ matrix.distro.name }}:${{ matrix.distro.tag }}" with a LUKS encrypted rootfs
         run: ./.github/workflows/build-${{ matrix.distro.name }}.sh INITRD_LUKS
 
+      - name: Boot "${{ matrix.distro.name }}:${{ matrix.distro.tag }}" with a LUKS encrypted rootfs on LVM
+        run: ./.github/workflows/build-${{ matrix.distro.name }}.sh INITRD_LUKS_LVM
+
       - name: Build the "${{ matrix.distro.name }}:${{ matrix.distro.tag }}" sysext image
         run: ./.github/workflows/build-${{ matrix.distro.name }}.sh SYSEXT
 
