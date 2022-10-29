@@ -54,11 +54,11 @@ for phase in "${PHASES[@]}"; do
             rm -fr mkosi.output
             mkdir mkosi.output
             # Build a basic initrd
-            python3 -m mkosi --cache "$MKOSI_CACHE" \
-                             --default fedora.mkosi \
-                             --image-version="$KVER" \
-                             --environment=KERNEL_VERSION="$KVER" \
-                             -f build
+            mkosi --cache "$MKOSI_CACHE" \
+                  --default fedora.mkosi \
+                  --image-version="$KVER" \
+                  --environment=KERNEL_VERSION="$KVER" \
+                  -f build
             # Check if the image was indeed generated
             stat "mkosi.output/initrd_$KVER.cpio.zstd"
 
@@ -95,12 +95,12 @@ for phase in "${PHASES[@]}"; do
             rm -fr mkosi.output
             mkdir mkosi.output
             # Build the initrd with LVM support
-            python3 -m mkosi --cache "$MKOSI_CACHE" \
-                             --default fedora.mkosi \
-                             --package="lvm2" \
-                             --image-version="$KVER" \
-                             --environment=KERNEL_VERSION="$KVER" \
-                             -f build
+            mkosi --cache "$MKOSI_CACHE" \
+                  --default fedora.mkosi \
+                  --package="lvm2" \
+                  --image-version="$KVER" \
+                  --environment=KERNEL_VERSION="$KVER" \
+                  -f build
             ## Check if the image was indeed generated
             stat "mkosi.output/initrd_$KVER.cpio.zstd"
 
@@ -164,12 +164,12 @@ for phase in "${PHASES[@]}"; do
             # so we can use it to unlock the rootfs
             echo -ne "$luks_passphrase" >mkosi.extra/luks.passphrase
             # Build the initrd with dm-crypt support
-            python3 -m mkosi --cache "$MKOSI_CACHE" \
-                             --default fedora.mkosi \
-                             --package="cryptsetup" \
-                             --image-version="$KVER" \
-                             --environment=KERNEL_VERSION="$KVER" \
-                             -f build
+            mkosi --cache "$MKOSI_CACHE" \
+                  --default fedora.mkosi \
+                  --package="cryptsetup" \
+                  --image-version="$KVER" \
+                  --environment=KERNEL_VERSION="$KVER" \
+                  -f build
             # Check if the image was indeed generated
             stat "mkosi.output/initrd_$KVER.cpio.zstd"
 
@@ -214,12 +214,12 @@ for phase in "${PHASES[@]}"; do
             # so we can use it to unlock the rootfs
             echo -ne "$luks_passphrase" >mkosi.extra/luks.passphrase
             # Build the initrd with LVM support
-            python3 -m mkosi --cache "$MKOSI_CACHE" \
-                             --default fedora.mkosi \
-                             --package="cryptsetup,lvm2" \
-                             --image-version="$KVER" \
-                             --environment=KERNEL_VERSION="$KVER" \
-                             -f build
+            mkosi --cache "$MKOSI_CACHE" \
+                  --default fedora.mkosi \
+                  --package="cryptsetup,lvm2" \
+                  --image-version="$KVER" \
+                  --environment=KERNEL_VERSION="$KVER" \
+                  -f build
             ## Check if the image was indeed generated
             stat "mkosi.output/initrd_$KVER.cpio.zstd"
 
@@ -284,12 +284,12 @@ for phase in "${PHASES[@]}"; do
             rm -fr mkosi.output
             mkdir mkosi.output
             # Build the initrd with iSCSI support
-            python3 -m mkosi --cache "$MKOSI_CACHE" \
-                             --default fedora.mkosi \
-                             --package="NetworkManager,iscsi-initiator-utils" \
-                             --image-version="$KVER" \
-                             --environment=KERNEL_VERSION="$KVER" \
-                             -f build
+            mkosi --cache "$MKOSI_CACHE" \
+                  --default fedora.mkosi \
+                  --package="NetworkManager,iscsi-initiator-utils" \
+                  --image-version="$KVER" \
+                  --environment=KERNEL_VERSION="$KVER" \
+                  -f build
             ## Check if the image was indeed generated
             stat "mkosi.output/initrd_$KVER.cpio.zstd"
 
@@ -338,19 +338,19 @@ for phase in "${PHASES[@]}"; do
             mkdir mkosi.output
 
             # Build the base initrd
-            python3 -m mkosi --default fedora.mkosi \
-                             --image-version="$KVER" \
-                             --environment=KERNEL_VERSION="$KVER" \
-                             --format=directory \
-                             --clean-package-metadata=no \
-                             -f build
+            mkosi --default fedora.mkosi \
+                  --image-version="$KVER" \
+                  --environment=KERNEL_VERSION="$KVER" \
+                  --format=directory \
+                  --clean-package-metadata=no \
+                  -f build
             # Build the sysext image
-            python3 -m mkosi --default fedora.mkosi \
-                             --image-version="$KVER-ssh" \
-                             --base-image="mkosi.output/initrd_$KVER" \
-                             --format=gpt_squashfs \
-                             --environment=SYSEXT="initrd-$KVER-ssh" \
-                             --package='!*,openssh-server'
+            mkosi --default fedora.mkosi \
+                  --image-version="$KVER-ssh" \
+                  --base-image="mkosi.output/initrd_$KVER" \
+                  --format=gpt_squashfs \
+                  --environment=SYSEXT="initrd-$KVER-ssh" \
+                  --package='!*,openssh-server'
             # Check if the image was indeed generated
             stat "mkosi.output/initrd_$KVER-ssh.raw"
 
