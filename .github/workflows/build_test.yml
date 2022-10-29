@@ -21,7 +21,7 @@ jobs:
           - INITRD_LVM
           - INITRD_LUKS
           - INITRD_LUKS_LVM
-          - INITRD_ISCSI
+            #- INITRD_ISCSI # iSCSI is missing a generator
           - SYSEXT
     container:
       image: "${{ matrix.distro.name }}:${{ matrix.distro.tag }}"
