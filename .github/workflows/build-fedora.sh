@@ -51,16 +51,16 @@ for phase in "${PHASES[@]}"; do
                 zstd
             ;;
         INITRD_BASIC)
-            rm -fr mkosi.output
-            mkdir mkosi.output
+            INITRD="initrd_$KVER.cpio.zstd"
             # Build a basic initrd
             mkosi --cache "$MKOSI_CACHE" \
                   --default fedora.mkosi \
                   --image-version="$KVER" \
                   --environment=KERNEL_VERSION="$KVER" \
+                  --output="$INITRD" \
                   -f build
             # Check if the image was indeed generated
-            stat "mkosi.output/initrd_$KVER.cpio.zstd"
+            stat "$INITRD"
 
             # Build a basic OS image to test the initrd with
             rm -fr _rootfs
@@ -77,32 +77,32 @@ for phase in "${PHASES[@]}"; do
 
             # Sanity check if the initrd is bootable
             timeout -k 10 5m qemu-kvm -m 512 -smp "$(nproc)" -nographic \
-                                      -initrd "mkosi.output/initrd_$KVER.cpio.zstd" \
+                                      -initrd "$INITRD" \
                                       -kernel "/usr/lib/modules/$KVER/vmlinuz" \
                                       -append "rd.systemd.unit=systemd-poweroff.service rd.debug $SYSTEMD_LOG_OPTS console=ttyS0"
 
             # Boot the initrd with an OS image
             timeout -k 10 5m qemu-kvm -m 1024 -smp "$(nproc)" -nographic \
-                                      -initrd "mkosi.output/initrd_$KVER.cpio.zstd" \
+                                      -initrd "$INITRD" \
                                       -kernel "/usr/lib/modules/$KVER/vmlinuz" \
                                       -drive "format=raw,cache=unsafe,file=_rootfs/rootfs.img" \
                                       -append "root=LABEL=root rd.debug $SYSTEMD_LOG_OPTS console=ttyS0 systemd.unit=systemd-poweroff.service systemd.default_timeout_start_sec=240"
 
             # Cleanup
-            rm -fr mkosi.output _rootfs
+            rm -fr _rootfs "$INITRD"
             ;;
         INITRD_LVM)
-            rm -fr mkosi.output
-            mkdir mkosi.output
             # Build the initrd with LVM support
+            INITRD="initrd_$KVER.cpio.zstd"
             mkosi --cache "$MKOSI_CACHE" \
                   --default fedora.mkosi \
                   --package="lvm2" \
                   --image-version="$KVER" \
                   --environment=KERNEL_VERSION="$KVER" \
+                  --output="$INITRD" \
                   -f build
             ## Check if the image was indeed generated
-            stat "mkosi.output/initrd_$KVER.cpio.zstd"
+            stat "$INITRD"
 
             # Build a basic LVM image to test the initrd with
             rm -fr _rootfs
@@ -147,31 +147,33 @@ for phase in "${PHASES[@]}"; do
 
             # Boot the initrd with an OS image
             timeout -k 10 5m qemu-kvm -m 1024 -smp "$(nproc)" -nographic \
-                                      -initrd "mkosi.output/initrd_$KVER.cpio.zstd" \
+                                      -initrd "$INITRD" \
                                       -kernel "/usr/lib/modules/$KVER/vmlinuz" \
                                       -drive "format=raw,cache=unsafe,file=_rootfs/rootfs.img" \
                                       -append "root=LABEL=root rd.debug $SYSTEMD_LOG_OPTS console=ttyS0 systemd.unit=systemd-poweroff.service systemd.default_timeout_start_sec=240"
 
             # Cleanup
-            rm -fr mkosi.output _rootfs
+            rm -fr  _rootfs "$INITRD"
             ;;
         INITRD_LUKS)
-            rm -fr mkosi.output mkosi.extra
-            mkdir mkosi.output mkosi.extra
+            rm -fr mkosi.extra
+            mkdir mkosi.extra
 
             luks_passphrase="H3lloW0rld!"
             # Instruct mkosi to copy the password file into the initrd image
             # so we can use it to unlock the rootfs
             echo -ne "$luks_passphrase" >mkosi.extra/luks.passphrase
+            INITRD="initrd_$KVER.cpio.zstd"
             # Build the initrd with dm-crypt support
             mkosi --cache "$MKOSI_CACHE" \
                   --default fedora.mkosi \
                   --package="cryptsetup" \
                   --image-version="$KVER" \
                   --environment=KERNEL_VERSION="$KVER" \
+                  --output="$INITRD" \
                   -f build
             # Check if the image was indeed generated
-            stat "mkosi.output/initrd_$KVER.cpio.zstd"
+            stat "$INITRD"
 
             # Build a basic LUKS encrypted OS image to test the initrd with
             # Passphrase is provided by the mkosi.passphrase file created above
@@ -197,31 +199,33 @@ for phase in "${PHASES[@]}"; do
             losetup -d "$lodev"
             luks_cmdline="rd.luks.key=/luks.passphrase rd.luks.uuid=$luks_uuid"
             timeout -k 10 5m qemu-kvm -m 1024 -smp "$(nproc)" -nographic \
-                                      -initrd "mkosi.output/initrd_$KVER.cpio.zstd" \
+                                      -initrd "$INITRD" \
                                       -kernel "/usr/lib/modules/$KVER/vmlinuz" \
                                       -drive "format=raw,cache=unsafe,file=_rootfs/rootfs.img" \
                                       -append "$luks_cmdline root=LABEL=root rd.debug $SYSTEMD_LOG_OPTS console=ttyS0 systemd.unit=systemd-poweroff.service systemd.default_timeout_start_sec=240"
 
             # Cleanup
-            rm -fr mkosi.output mkosi.extra mkosi.passphrase
+            rm -fr mkosi.extra mkosi.passphrase "$INITRD"
             ;;
         INITRD_LUKS_LVM)
-            rm -fr mkosi.output mkosi.extra
-            mkdir mkosi.output mkosi.extra
+            rm -fr mkosi.extra
+            mkdir mkosi.extra
 
             luks_passphrase="H3lloW0rld!"
             # Instruct mkosi to copy the password file into the initrd image
             # so we can use it to unlock the rootfs
             echo -ne "$luks_passphrase" >mkosi.extra/luks.passphrase
             # Build the initrd with LVM support
+            INITRD="initrd_$KVER.cpio.zstd"
             mkosi --cache "$MKOSI_CACHE" \
                   --default fedora.mkosi \
                   --package="cryptsetup,lvm2" \
                   --image-version="$KVER" \
                   --environment=KERNEL_VERSION="$KVER" \
+                  --output="$INITRD" \
                   -f build
             ## Check if the image was indeed generated
-            stat "mkosi.output/initrd_$KVER.cpio.zstd"
+            stat "$INITRD"
 
             # Build a basic LVM image to test the initrd with
             rm -fr _rootfs
@@ -272,26 +276,26 @@ for phase in "${PHASES[@]}"; do
             # Boot the initrd with an OS image
             luks_cmdline="rd.luks.key=/luks.passphrase rd.luks.uuid=$luks_uuid"
             timeout -k 10 5m qemu-kvm -m 1024 -smp "$(nproc)" -nographic \
-                                      -initrd "mkosi.output/initrd_$KVER.cpio.zstd" \
+                                      -initrd "$INITRD" \
                                       -kernel "/usr/lib/modules/$KVER/vmlinuz" \
                                       -drive "format=raw,cache=unsafe,file=_rootfs/rootfs.img" \
                                       -append "$luks_cmdline root=LABEL=root rd.debug $SYSTEMD_LOG_OPTS console=ttyS0 systemd.unit=systemd-poweroff.service systemd.default_timeout_start_sec=240"
 
             # Cleanup
-            rm -fr mkosi.output _rootfs
+            rm -fr _rootfs "$INITRD"
             ;;
         INITRD_ISCSI)
-            rm -fr mkosi.output
-            mkdir mkosi.output
             # Build the initrd with iSCSI support
+            INITRD="initrd_$KVER.cpio.zstd"
             mkosi --cache "$MKOSI_CACHE" \
                   --default fedora.mkosi \
                   --package="NetworkManager,iscsi-initiator-utils" \
                   --image-version="$KVER" \
                   --environment=KERNEL_VERSION="$KVER" \
+                  --output="$INITRD" \
                   -f build
             ## Check if the image was indeed generated
-            stat "mkosi.output/initrd_$KVER.cpio.zstd"
+            stat "$INITRD"
 
             # Build a basic image to test the initrd with
             rm -fr _rootfs
@@ -323,7 +327,7 @@ for phase in "${PHASES[@]}"; do
 
             iscsi_cmdline="ip=dhcp netroot=iscsi:10.10.10.1::::$target_name"
             timeout -k 10 5m qemu-kvm -m 1024 -smp "$(nproc)" -nographic -nic bridge,br=initrd0 \
-                                      -initrd "mkosi.output/initrd_$KVER.cpio.zstd" \
+                                      -initrd "$INITRD" \
                                       -kernel "/usr/lib/modules/$KVER/vmlinuz" \
                                       -append "$iscsi_cmdline root=LABEL=root rd.debug $SYSTEMD_LOG_OPTS console=ttyS0 systemd.unit=systemd-poweroff.service systemd.default_timeout_start_sec=240"
 
@@ -331,31 +335,32 @@ for phase in "${PHASES[@]}"; do
             tgtadm --lld iscsi --op delete --mode target --tid=1
             pkill -INT tgtd
             pkill dnsmasq
-            rm -fr mkosi.output _rootfs
+            rm -fr _rootfs "$INITRD"
             ;;
         SYSEXT)
-            rm -fr mkosi.output
-            mkdir mkosi.output
-
             # Build the base initrd
+            INITRD_BASE="initrd_$KVER"
             mkosi --default fedora.mkosi \
                   --image-version="$KVER" \
                   --environment=KERNEL_VERSION="$KVER" \
                   --format=directory \
+                  --output="$INITRD_BASE" \
                   --clean-package-metadata=no \
                   -f build
             # Build the sysext image
+            INITRD_SYSEXT="initrd_$KVER-ssh.raw"
             mkosi --default fedora.mkosi \
                   --image-version="$KVER-ssh" \
-                  --base-image="mkosi.output/initrd_$KVER" \
+                  --base-image="$INITRD_BASE" \
                   --format=gpt_squashfs \
                   --environment=SYSEXT="initrd-$KVER-ssh" \
+                  --output="$INITRD_SYSEXT" \
                   --package='!*,openssh-server'
             # Check if the image was indeed generated
-            stat "mkosi.output/initrd_$KVER-ssh.raw"
+            stat "$INITRD_SYSEXT"
 
             # Cleanup
-            rm -fr mkosi.output
+            rm -fr "$INITRD_BASE" "$INITRD_SYSEXT"
             ;;
         *)
             echo >&2 "Unknown phase '$phase'"
