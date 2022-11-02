@@ -3,7 +3,13 @@
 # vi: ts=2 sw=2 et:
 
 name: Build & boot test
-on: [pull_request]
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build:
