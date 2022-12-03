@@ -5,7 +5,7 @@ set -o pipefail
 
 # shellcheck disable=SC2206
 PHASES=(${@:-DEPS INITRD_BASIC})
-SYSTEMD_LOG_OPTS="systemd.log_target=console udev.log_level=info systemd.default_standard_output=journal+console"
+SYSTEMD_LOG_OPTS="systemd.log_target=console udev.log_level=info systemd.default_standard_output=journal+console systemd.status_unit_format=name"
 MKOSI_CACHE="/var/tmp/mkosiinitrd$(</etc/machine-id).cache"
 
 # Poor man's `udevadm wait` (which we can't use, since we're in a container)
