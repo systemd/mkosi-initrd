@@ -344,6 +344,7 @@ for phase in "${PHASES[@]}"; do
             tgtadm --lld iscsi --op delete --mode target --tid=1
             pkill -INT tgtd
             pkill dnsmasq
+            ip link del dev initrd0
             rm -fr _rootfs "$INITRD"
             ;;
         SYSEXT)
