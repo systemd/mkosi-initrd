@@ -295,6 +295,7 @@ for phase in "${PHASES[@]}"; do
             mkosi --cache "$MKOSI_CACHE" \
                   --default fedora.mkosi \
                   --package="NetworkManager,iscsi-initiator-utils" \
+                  --extra-tree=mkosi.extra-iscsi \
                   --image-version="$KVER" \
                   --environment=KERNEL_VERSION="$KVER" \
                   --output="$INITRD" \
