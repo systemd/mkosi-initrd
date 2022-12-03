@@ -8,7 +8,7 @@ PHASES=(${@:-DEPS INITRD_BASIC})
 SYSTEMD_LOG_OPTS="systemd.log_target=console udev.log_level=info systemd.default_standard_output=journal+console systemd.status_unit_format=name"
 MKOSI_CACHE="/var/tmp/mkosiinitrd$(</etc/machine-id).cache"
 
-# Poor man's `udevadm wait` (which we can't use, since we're in a container)
+# Poor man's 'udevadm wait' (which we can't use, since we're in a container)
 wait_for_dev() {
     local i
 
@@ -25,7 +25,7 @@ if [[ ! -d "$MKOSI_CACHE" ]]; then
 fi
 
 if rpm -q kernel-core >/dev/null; then
-    # Can't use `uname -r`, since we're in a container
+    # Can't use 'uname -r', since we're in a container
     KVER="$(sed 1q <(rpm -q kernel-core --qf "%{version}-%{release}.%{arch}\n" | sort -Vr))"
 fi
 
