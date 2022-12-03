@@ -252,7 +252,7 @@ def mask_units(root):
         # In systemd, we always have cleaned the database on switch-root, since the initial
         # addition of the initrd-* units in cf843477946451fabf9b5d17eec8ec81515057b6. But
         # that seems pointless, since initrds need to match the kernel version and are
-        # generally used with the main system in the main version or slightly newer. And
+        # generally used with the main system in the same version or slightly newer. And
         # for important devices, db_persist is set. So we end up destroying some of the
         # state, but not all. Let's just skip the cleanup altogether, and rely on the rules
         # being idempotent so that we end up in the correct state.
