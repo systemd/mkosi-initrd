@@ -318,6 +318,9 @@ for phase in "${PHASES[@]}"; do
             # Setup a local iSCSI target
             target_name="iqn.2022-01.com.example:iscsi.initrd.test"
             pgrep tgtd || /usr/sbin/tgtd
+            # Workaround for a race
+            # See: https://src.fedoraproject.org/rpms/scsi-target-utils/c/3a25fe7a57200b61ecebcec0d867671597080196
+            sleep 5
             tgtadm --lld iscsi --op new --mode target --tid=1 --targetname "$target_name"
             tgtadm --lld iscsi --op new --mode logicalunit --tid 1 --lun 1 -b "$PWD/_rootfs/rootfs.img"
             tgtadm --lld iscsi --op update --mode logicalunit --tid 1 --lun 1
