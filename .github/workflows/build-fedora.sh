@@ -76,17 +76,19 @@ for phase in "${PHASES[@]}"; do
             popd
 
             # Sanity check if the initrd is bootable
-            timeout -k 10 5m qemu-kvm -m 512 -smp "$(nproc)" -nographic \
-                                      -initrd "$INITRD" \
-                                      -kernel "/usr/lib/modules/$KVER/vmlinuz" \
-                                      -append "rd.systemd.unit=systemd-poweroff.service rd.debug $SYSTEMD_LOG_OPTS console=ttyS0"
+            timeout --foreground -k 10 5m \
+                qemu-kvm -m 512 -smp "$(nproc)" -nographic \
+                         -initrd "$INITRD" \
+                         -kernel "/usr/lib/modules/$KVER/vmlinuz" \
+                         -append "rd.systemd.unit=systemd-poweroff.service rd.debug $SYSTEMD_LOG_OPTS console=ttyS0"
 
             # Boot the initrd with an OS image
-            timeout -k 10 5m qemu-kvm -m 1024 -smp "$(nproc)" -nographic \
-                                      -initrd "$INITRD" \
-                                      -kernel "/usr/lib/modules/$KVER/vmlinuz" \
-                                      -drive "format=raw,cache=unsafe,file=_rootfs/rootfs.img" \
-                                      -append "root=LABEL=root rd.debug $SYSTEMD_LOG_OPTS console=ttyS0 systemd.unit=systemd-poweroff.service systemd.default_timeout_start_sec=240"
+            timeout --foreground -k 10 5m \
+                qemu-kvm -m 1024 -smp "$(nproc)" -nographic \
+                         -initrd "$INITRD" \
+                         -kernel "/usr/lib/modules/$KVER/vmlinuz" \
+                         -drive "format=raw,cache=unsafe,file=_rootfs/rootfs.img" \
+                         -append "root=LABEL=root rd.debug $SYSTEMD_LOG_OPTS console=ttyS0 systemd.unit=systemd-poweroff.service systemd.default_timeout_start_sec=240"
 
             # Cleanup
             rm -fr _rootfs "$INITRD"
@@ -146,11 +148,12 @@ for phase in "${PHASES[@]}"; do
             popd
 
             # Boot the initrd with an OS image
-            timeout -k 10 5m qemu-kvm -m 1024 -smp "$(nproc)" -nographic \
-                                      -initrd "$INITRD" \
-                                      -kernel "/usr/lib/modules/$KVER/vmlinuz" \
-                                      -drive "format=raw,cache=unsafe,file=_rootfs/rootfs.img" \
-                                      -append "root=LABEL=root rd.debug $SYSTEMD_LOG_OPTS console=ttyS0 systemd.unit=systemd-poweroff.service systemd.default_timeout_start_sec=240"
+            timeout --foreground -k 10 5m \
+                qemu-kvm -m 1024 -smp "$(nproc)" -nographic \
+                         -initrd "$INITRD" \
+                         -kernel "/usr/lib/modules/$KVER/vmlinuz" \
+                         -drive "format=raw,cache=unsafe,file=_rootfs/rootfs.img" \
+                         -append "root=LABEL=root rd.debug $SYSTEMD_LOG_OPTS console=ttyS0 systemd.unit=systemd-poweroff.service systemd.default_timeout_start_sec=240"
 
             # Cleanup
             rm -fr  _rootfs "$INITRD"
@@ -198,11 +201,12 @@ for phase in "${PHASES[@]}"; do
             echo "LUKS rootfs UUID: $luks_uuid"
             losetup -d "$lodev"
             luks_cmdline="rd.luks.key=/luks.passphrase rd.luks.uuid=$luks_uuid"
-            timeout -k 10 5m qemu-kvm -m 1024 -smp "$(nproc)" -nographic \
-                                      -initrd "$INITRD" \
-                                      -kernel "/usr/lib/modules/$KVER/vmlinuz" \
-                                      -drive "format=raw,cache=unsafe,file=_rootfs/rootfs.img" \
-                                      -append "$luks_cmdline root=LABEL=root rd.debug $SYSTEMD_LOG_OPTS console=ttyS0 systemd.unit=systemd-poweroff.service systemd.default_timeout_start_sec=240"
+            timeout --foreground -k 10 5m \
+                qemu-kvm -m 1024 -smp "$(nproc)" -nographic \
+                         -initrd "$INITRD" \
+                         -kernel "/usr/lib/modules/$KVER/vmlinuz" \
+                         -drive "format=raw,cache=unsafe,file=_rootfs/rootfs.img" \
+                         -append "$luks_cmdline root=LABEL=root rd.debug $SYSTEMD_LOG_OPTS console=ttyS0 systemd.unit=systemd-poweroff.service systemd.default_timeout_start_sec=240"
 
             # Cleanup
             rm -fr mkosi.extra mkosi.passphrase "$INITRD"
@@ -275,11 +279,12 @@ for phase in "${PHASES[@]}"; do
 
             # Boot the initrd with an OS image
             luks_cmdline="rd.luks.key=/luks.passphrase rd.luks.uuid=$luks_uuid"
-            timeout -k 10 5m qemu-kvm -m 1024 -smp "$(nproc)" -nographic \
-                                      -initrd "$INITRD" \
-                                      -kernel "/usr/lib/modules/$KVER/vmlinuz" \
-                                      -drive "format=raw,cache=unsafe,file=_rootfs/rootfs.img" \
-                                      -append "$luks_cmdline root=LABEL=root rd.debug $SYSTEMD_LOG_OPTS console=ttyS0 systemd.unit=systemd-poweroff.service systemd.default_timeout_start_sec=240"
+            timeout --foreground -k 10 5m \
+                qemu-kvm -m 1024 -smp "$(nproc)" -nographic \
+                         -initrd "$INITRD" \
+                         -kernel "/usr/lib/modules/$KVER/vmlinuz" \
+                         -drive "format=raw,cache=unsafe,file=_rootfs/rootfs.img" \
+                         -append "$luks_cmdline root=LABEL=root rd.debug $SYSTEMD_LOG_OPTS console=ttyS0 systemd.unit=systemd-poweroff.service systemd.default_timeout_start_sec=240"
 
             # Cleanup
             rm -fr _rootfs "$INITRD"
@@ -326,10 +331,11 @@ for phase in "${PHASES[@]}"; do
             grep -q initrd0 /etc/qemu/bridge.conf || echo "allow initrd0" >>/etc/qemu/bridge.conf
 
             iscsi_cmdline="ip=dhcp netroot=iscsi:10.10.10.1::::$target_name"
-            timeout -k 10 5m qemu-kvm -m 1024 -smp "$(nproc)" -nographic -nic bridge,br=initrd0 \
-                                      -initrd "$INITRD" \
-                                      -kernel "/usr/lib/modules/$KVER/vmlinuz" \
-                                      -append "$iscsi_cmdline root=LABEL=root rd.debug $SYSTEMD_LOG_OPTS console=ttyS0 systemd.unit=systemd-poweroff.service systemd.default_timeout_start_sec=240"
+            timeout --foreground -k 10 5m \
+                qemu-kvm -m 1024 -smp "$(nproc)" -nographic -nic bridge,br=initrd0 \
+                         -initrd "$INITRD" \
+                         -kernel "/usr/lib/modules/$KVER/vmlinuz" \
+                         -append "$iscsi_cmdline root=LABEL=root rd.debug $SYSTEMD_LOG_OPTS console=ttyS0 systemd.unit=systemd-poweroff.service systemd.default_timeout_start_sec=240"
 
             # Cleanup
             tgtadm --lld iscsi --op delete --mode target --tid=1
