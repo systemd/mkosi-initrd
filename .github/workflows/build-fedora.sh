@@ -294,7 +294,7 @@ for phase in "${PHASES[@]}"; do
             INITRD="initrd_$KVER.cpio.zstd"
             mkosi --cache "$MKOSI_CACHE" \
                   --default fedora.mkosi \
-                  --package="NetworkManager,iscsi-initiator-utils" \
+                  --package="iscsi-initiator-utils,systemd-networkd" \
                   --extra-tree=mkosi.extra-iscsi \
                   --image-version="$KVER" \
                   --environment=KERNEL_VERSION="$KVER" \
@@ -334,7 +334,7 @@ for phase in "${PHASES[@]}"; do
             dnsmasq --interface=initrd0 --bind-interfaces --dhcp-range=10.10.10.10,10.10.10.100
             grep -q initrd0 /etc/qemu/bridge.conf || echo "allow initrd0" >>/etc/qemu/bridge.conf
 
-            iscsi_cmdline="ip=dhcp netroot=iscsi:10.10.10.1::::$target_name"
+            iscsi_cmdline="ip=dhcp netroot=iscsi:10.10.10.1::::$target_name rd.systemd.wants=systemd-networkd.service rd.systemd.wants=systemd-networkd-wait-online.service"
             timeout --foreground -k 10 5m \
                 qemu-kvm -m 1024 -smp "$(nproc)" -nographic -nic bridge,br=initrd0 \
                          -initrd "$INITRD" \
