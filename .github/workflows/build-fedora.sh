@@ -313,6 +313,7 @@ for phase in "${PHASES[@]}"; do
                   --distribution="$ID" \
                   --release="$VERSION_ID" \
                   --format=gpt_btrfs \
+                  --package="iscsi-initiator-utils" \
                   --output=rootfs.img
             popd
 
