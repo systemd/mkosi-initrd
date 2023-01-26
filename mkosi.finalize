@@ -48,8 +48,8 @@ def kernel_core_skip_file(path):
     return any(fnmatch.fnmatch(path, pat)
                for pat in patterns)
 
-def copy_in_modules_from_rpmls(root, kver):
-    rpm = f'kernel-core-{kver}'
+def copy_in_modules_from_rpmls(root, kver, modules_rpm):
+    rpm = f'{modules_rpm}-{kver}'
     try:
         out = subprocess.check_output(['rpm', '-ql', rpm], text=True)
     except (FileNotFoundError, subprocess.CalledProcessError) as e:
@@ -84,13 +84,13 @@ def copy_in_modules_from_fs(root, kver):
     print(f'Copied files from {source}')
     return True
 
-def copy_in_modules_from_cpio(root, kver):
+def copy_in_modules_from_cpio(root, kver, modules_rpm):
     file_filter = ['--nonmatching',
                    './lib/modules/*/bls.conf',      # a grub abomination with $grub_variables
                    './lib/modules/*/vmlinuz']
 
     path = pathlib.Path(sys.argv[0]).parent
-    file = path / f'kernel-core-{kver}.rpm'
+    file = path / f'{modules_rpm}-{kver}.rpm'
 
     if not file.exists():
         print(f'{file} not found, downloading.')
@@ -110,9 +110,14 @@ def copy_in_modules_from_cpio(root, kver):
 def copy_in_modules_kver(root, kver):
     print(f'Installing modules for kernel {kver}')
 
-    copy_in_modules_from_rpmls(root, kver) or \
+    res = subprocess.check_output(['rpm', '--eval', f'%[v"{kver}" >= v"6.2.0"]'],
+                                  text=True)
+    good = res.strip() == '1'
+    modules_rpm = 'kernel-modules-core' if good else 'kernel-core'
+
+    copy_in_modules_from_rpmls(root, kver, modules_rpm) or \
         copy_in_modules_from_fs(root, kver) or \
-        copy_in_modules_from_cpio(root, kver)
+        copy_in_modules_from_cpio(root, kver, modules_rpm)
 
     subprocess.run(['depmod', '-a', '-w', '-b', root, kver], check=True)
 
@@ -120,13 +125,14 @@ def copy_in_modules(root):
     # This part is pretty ugly. The kernel package provides the following subpackages:
     # kernel — empty metapackage
     # kernel-core — /boot/vmlinuz-<kver> (%ghost?) and /lib/modules/<kver>/vmlinuz,
-    #          and a bunch of basic modules.
+    # kernel-modules-core — a bunch of basic modules
+    #        (k-m-c was split out in 6.2.0 out of kernel-core.)
     # kernel-modules — more modules (drivers)
     # kernel-modules-extra — more modules ("less commonly used drivers")
     # kernel-modules-internal — "kernel modules for the kernel package for Red Hat internal usage"
     #          (netdevsim, rcutorture…)
     #
-    # This script requires that kernel-core-<kver>.rpm is present in $CWD.
+    # This script requires kernel-[modules-]core)-<kver>.rpm to be present in $CWD.
 
     try:
         kver = os.environ['KERNEL_VERSION']
