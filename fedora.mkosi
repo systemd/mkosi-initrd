@@ -50,3 +50,6 @@ RemoveFiles=
         /usr/lib/systemd/catalog
         /etc/udev/hwdb.d
         /usr/lib/udev/hwdb.d
+
+        # this is not needed by anything updated in the last 20 years
+        /etc/services
