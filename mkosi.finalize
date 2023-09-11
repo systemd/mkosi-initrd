@@ -301,9 +301,6 @@ def do_sysext(root, sysext_name):
     remove_non_sysext_files(root)
 
 def main(argv):
-    if argv[1] != 'final':
-        sys.exit(0)
-
     root = buildroot()
 
     sysext = os.getenv('SYSEXT')

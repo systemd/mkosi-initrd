@@ -22,13 +22,19 @@ case "$COMMAND" in
         BUILD_DIR=$(mktemp -d -p /var/tmp)
         (
             [ "$KERNEL_INSTALL_VERBOSE" -gt 0 ] && set -x
-            cd "$BUILD_DIR"
 
-            mkosi --default /usr/lib/mkosi-initrd/fedora.mkosi \
+            mkosi --include=/usr/lib/mkosi-initrd/mkosi.conf             \
+                  --workspace-dir="$BUILD_DIR"                           \
                   --finalize-script=/usr/lib/mkosi-initrd/mkosi.finalize \
-                  --image-version="$KERNEL_VERSION" \
-                  --environment=KERNEL_VERSION="$KERNEL_VERSION" \
-                  -o "${KERNEL_INSTALL_STAGING_AREA}/initrd"
+                  --image-version="$KERNEL_VERSION"                      \
+                  --environment="KERNEL_VERSION=$KERNEL_VERSION"         \
+                  -O "${KERNEL_INSTALL_STAGING_AREA}"                    \
+                  -o initrd
+
+            rm "${KERNEL_INSTALL_STAGING_AREA}/initrd"
+            mv -v "${KERNEL_INSTALL_STAGING_AREA}"/initrd_*.cpio.zst     \
+                  "${KERNEL_INSTALL_STAGING_AREA}/initrd"
+
             rm -rf "$BUILD_DIR"
         )
         ;;
