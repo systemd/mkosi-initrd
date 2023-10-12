@@ -48,7 +48,7 @@ def kernel_core_skip_file(path):
     return any(fnmatch.fnmatch(path, pat)
                for pat in patterns)
 
-def copy_in_modules_from_rpmls(root, kver, rpms):
+def copy_in_modules_from_rpmls(root, rpms):
     try:
         out = subprocess.check_output(['rpm', '-ql', *rpms], text=True)
     except (FileNotFoundError, subprocess.CalledProcessError) as e:
@@ -83,7 +83,7 @@ def copy_in_modules_from_fs(root, kver):
     print(f'Copied files from {source}')
     return True
 
-def copy_in_modules_from_cpio(root, kver, rpms):
+def copy_in_modules_from_cpio(root, rpms):
     file_filter = ['--nonmatching',
                    './lib/modules/*/bls.conf',      # a grub abomination with $grub_variables
                    './lib/modules/*/vmlinuz']
@@ -121,9 +121,10 @@ def copy_in_modules_kver(root, kver):
     if have_split:
         rpms += [f'kernel-modules-core-{kver}']
 
-    copy_in_modules_from_rpmls(root, kver, rpms) or \
-        copy_in_modules_from_fs(root, kver) or \
-        copy_in_modules_from_cpio(root, kver, rpms)
+    if not (copy_in_modules_from_rpmls(root, rpms) or
+            copy_in_modules_from_fs(root, kver) or
+            copy_in_modules_from_cpio(root, rpms)):
+        raise Exception(f'Failed to copy modules for kernel {kver}')
 
     subprocess.run(['depmod', '-a', '-w', '-b', root, kver], check=True)
 
