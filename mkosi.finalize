@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: LGPL-2.1-or-later
 
+# pylint: disable=missing-function-docstring,missing-module-docstring,line-too-long
+
 import ast
 import fnmatch
 import functools
@@ -48,12 +50,11 @@ def kernel_core_skip_file(path):
     return any(fnmatch.fnmatch(path, pat)
                for pat in patterns)
 
-def copy_in_modules_from_rpmls(root, kver, modules_rpm):
-    rpm = f'{modules_rpm}-{kver}'
+def copy_in_modules_from_rpmls(root, rpms):
     try:
-        out = subprocess.check_output(['rpm', '-ql', rpm], text=True)
+        out = subprocess.check_output(['rpm', '-ql', *rpms], text=True)
     except (FileNotFoundError, subprocess.CalledProcessError) as e:
-        print(f'Cannot query file list of {rpm}:', e)
+        print(f"rpm -ql {' '.join(rpms)} failed:", e)
         return False
 
     files = out.splitlines()
@@ -70,7 +71,7 @@ def copy_in_modules_from_rpmls(root, kver, modules_rpm):
         shutil.copy2(file, dest, follow_symlinks=False)
         installed += 1
 
-    print(f'Installed {installed}/{installed + skipped} files from {rpm}')
+    print(f"Installed {installed}/{installed + skipped} files from {' '.join(rpms)}")
     return True
 
 def copy_in_modules_from_fs(root, kver):
@@ -84,27 +85,31 @@ def copy_in_modules_from_fs(root, kver):
     print(f'Copied files from {source}')
     return True
 
-def copy_in_modules_from_cpio(root, kver, modules_rpm):
+def copy_in_modules_from_cpio(root, rpms):
     file_filter = ['--nonmatching',
                    './lib/modules/*/bls.conf',      # a grub abomination with $grub_variables
                    './lib/modules/*/vmlinuz']
-
     path = pathlib.Path(sys.argv[0]).parent
-    file = path / f'{modules_rpm}-{kver}.rpm'
 
-    if not file.exists():
-        print(f'{file} not found, downloading.')
+    for rpm in rpms:
+        file = path / f'{rpm}.rpm'
 
-        subprocess.run(['dnf', 'download', f'--downloaddir={file.parent}',
-                        file.with_suffix('').name],
-                       check=True)
+        if not file.exists():
+            print(f'{file} not found, downloading.')
 
-    with subprocess.Popen(['rpm2cpio', file], stdout=subprocess.PIPE) as archive:
-        subprocess.run(['cpio', '-i', '--make-directories', '--quiet', '-D', root, *file_filter],
-                       stdin=archive.stdout,
-                       check=True)
+            subprocess.run(['dnf', 'download', f'--downloaddir={file.parent}',
+                            file.with_suffix('').name],
+                           check=True)
 
-    print(f'Unpacked files from {file}')
+        with subprocess.Popen(['rpm2cpio', file], stdout=subprocess.PIPE) as archive:
+            subprocess.run(['cpio', '-i', '--make-directories', '--quiet',
+                            '-D', root,
+                            *file_filter],
+                           stdin=archive.stdout,
+                           check=True)
+
+        print(f'Unpacked files from {file}')
+
     return True
 
 def copy_in_modules_kver(root, kver):
@@ -112,12 +117,16 @@ def copy_in_modules_kver(root, kver):
 
     res = subprocess.check_output(['rpm', '--eval', f'%[v"{kver}" >= v"6.2.0"]'],
                                   text=True)
-    good = res.strip() == '1'
-    modules_rpm = 'kernel-modules-core' if good else 'kernel-core'
+    have_split = res.strip() == '1'
+    # kernel-core contains modules.builtin and modules.builtin.modinfo, so we need in too :(
+    rpms = [f'kernel-core-{kver}']
+    if have_split:
+        rpms += [f'kernel-modules-core-{kver}']
 
-    copy_in_modules_from_rpmls(root, kver, modules_rpm) or \
-        copy_in_modules_from_fs(root, kver) or \
-        copy_in_modules_from_cpio(root, kver, modules_rpm)
+    if not (copy_in_modules_from_rpmls(root, rpms) or
+            copy_in_modules_from_fs(root, kver) or
+            copy_in_modules_from_cpio(root, rpms)):
+        raise Exception(f'Failed to copy modules for kernel {kver}')
 
     subprocess.run(['depmod', '-a', '-w', '-b', root, kver], check=True)
 
@@ -301,9 +310,6 @@ def do_sysext(root, sysext_name):
     remove_non_sysext_files(root)
 
 def main(argv):
-    if argv[1] != 'final':
-        sys.exit(0)
-
     root = buildroot()
 
     sysext = os.getenv('SYSEXT')
